@@ -8,3 +8,5 @@
 *.pywz
 *.pyzw
 *.pyzwz
+*.db
+*.xlsx
