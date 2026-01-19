@@ -38,10 +38,10 @@ The API will be reachable at http://localhost:5000.
 # Core API Endpoints
 
 - POST /upload – Accepts a multipart file (pdf, png, jpg). Returns extracted JSON.
-- GET /invoices – Lists all stored invoices (header info).
-- GET /invoices/<id> – Retrieves a single invoice with full details.
-- PUT /invoices/<id> – Updates editable fields; body is JSON.
-- DELETE /invoices/<id> – Removes an invoice record.
+- GET /sales_orders – Lists all stored sales orders (header info).
+- GET /sales_orders/<id> – Retrieves a single sales order with full details.
+- PUT /sales_orders/<id> – Updates editable fields; body is JSON.
+- DELETE /sales_orders/<id> – Removes a sales order record.
 
 All endpoints return JSON with appropriate HTTP status codes.
 
