@@ -3,8 +3,10 @@ Flask API for invoice extractor.
 Provides endpoints for managing sales orders.
 """
 
+from datetime import datetime
+
 from db import get_db_session
-from flask import Flask, abort, jsonify
+from flask import Flask, abort, jsonify, request
 from models import SalesOrderDetail, SalesOrderHeader
 
 app = Flask(__name__)
@@ -132,6 +134,120 @@ def get_sales_order(order_id):
                 }
 
             order_data["OrderDetails"].append(detail_dict)
+
+        return jsonify(order_data), 200
+
+
+@app.route("/sales_orders/<int:order_id>", methods=["PUT"])
+def update_sales_order(order_id):
+    """
+    Updates editable fields of a sales order.
+
+    Args:
+        order_id: The SalesOrderID of the order to update
+
+    Request Body:
+        JSON object with fields to update. SalesOrderID cannot be updated.
+        Date fields should be in ISO format (YYYY-MM-DDTHH:MM:SS).
+
+    Returns:
+        JSON object containing the updated sales order header.
+        Returns 404 if order not found, 400 for invalid requests.
+    """
+    if not request.is_json:
+        abort(400, description="Request body must be JSON")
+
+    data = request.get_json()
+
+    # SalesOrderID cannot be updated
+    if "SalesOrderID" in data and data["SalesOrderID"] != order_id:
+        abort(400, description="SalesOrderID cannot be modified")
+
+    with get_db_session() as session:
+        order = (
+            session.query(SalesOrderHeader)
+            .filter(SalesOrderHeader.SalesOrderID == order_id)
+            .first()
+        )
+
+        if not order:
+            abort(404, description=f"Sales order with ID {order_id} not found")
+
+        # List of editable fields (excluding primary key)
+        editable_fields = [
+            "RevisionNumber",
+            "OrderDate",
+            "DueDate",
+            "ShipDate",
+            "Status",
+            "OnlineOrderFlag",
+            "SalesOrderNumber",
+            "PurchaseOrderNumber",
+            "AccountNumber",
+            "CustomerID",
+            "SalesPersonID",
+            "TerritoryID",
+            "BillToAddressID",
+            "ShipToAddressID",
+            "ShipMethodID",
+            "CreditCardID",
+            "CreditCardApprovalCode",
+            "CurrencyRateID",
+            "SubTotal",
+            "TaxAmt",
+            "Freight",
+            "TotalDue",
+        ]
+
+        # Update only provided fields
+        for field in editable_fields:
+            if field in data:
+                value = data[field]
+
+                # Handle datetime fields
+                if field in ["OrderDate", "DueDate", "ShipDate"]:
+                    if value is not None:
+                        try:
+                            # Try parsing ISO format datetime string
+                            if isinstance(value, str):
+                                value = datetime.fromisoformat(
+                                    value.replace("Z", "+00:00")
+                                )
+                        except (ValueError, AttributeError):
+                            abort(
+                                400,
+                                description=f"Invalid date format for {field}. "
+                                "Use ISO format (YYYY-MM-DDTHH:MM:SS)",
+                            )
+
+                setattr(order, field, value)
+
+        # Build response with updated order data
+        order_data = {
+            "SalesOrderID": order.SalesOrderID,
+            "RevisionNumber": order.RevisionNumber,
+            "OrderDate": order.OrderDate.isoformat() if order.OrderDate else None,
+            "DueDate": order.DueDate.isoformat() if order.DueDate else None,
+            "ShipDate": order.ShipDate.isoformat() if order.ShipDate else None,
+            "Status": order.Status,
+            "OnlineOrderFlag": order.OnlineOrderFlag,
+            "SalesOrderNumber": order.SalesOrderNumber,
+            "PurchaseOrderNumber": order.PurchaseOrderNumber,
+            "AccountNumber": order.AccountNumber,
+            "CustomerID": order.CustomerID,
+            "SalesPersonID": order.SalesPersonID,
+            "TerritoryID": order.TerritoryID,
+            "BillToAddressID": order.BillToAddressID,
+            "ShipToAddressID": order.ShipToAddressID,
+            "ShipMethodID": order.ShipMethodID,
+            "CreditCardID": order.CreditCardID,
+            "CreditCardApprovalCode": order.CreditCardApprovalCode,
+            "CurrencyRateID": order.CurrencyRateID,
+            "SubTotal": order.SubTotal,
+            "TaxAmt": order.TaxAmt,
+            "Freight": order.Freight,
+            "TotalDue": order.TotalDue,
+        }
 
         return jsonify(order_data), 200
 
