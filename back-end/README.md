@@ -4,7 +4,7 @@ A lightweight Flask API that receives uploaded invoices, extracts key fields via
 
 # Prerequisites
 
-- Python 3.9+
+- Python 3.11
 - pip (or uv pip)
 - An LLM API key (e.g., OpenAI) placed in .env as LLM_API_KEY
 - Optional: Tesseract OCR (sudo apt-get install tesseract-ocr) for image‑based invoices
@@ -12,12 +12,12 @@ A lightweight Flask API that receives uploaded invoices, extracts key fields via
 # Installation
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/invoice-extractor.git
+git clone https://github.com/lukeganzevoort/invoice-extractor.git
 cd invoice-extractor/flask-backend
 
 # Set up a virtual environment
-python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate   # Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
