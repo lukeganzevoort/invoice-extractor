@@ -43,6 +43,7 @@ The API will be reachable at http://localhost:5000.
 
 ## Sales Orders
 
+- POST /sales_orders – Creates a new sales order; body is JSON. CustomerID and TerritoryID are required.
 - GET /sales_orders – Lists all stored sales orders (header info).
 - GET /sales_orders/<id> – Retrieves a single sales order with full details.
 - PUT /sales_orders/<id> – Updates editable fields; body is JSON.
@@ -50,12 +51,13 @@ The API will be reachable at http://localhost:5000.
 
 ## Sales Order Details
 
+- POST /sales_order_details – Creates a new sales order detail (line item); body is JSON. SalesOrderID and ProductID are required.
 - GET /sales_order_details – Lists all sales order details (line items) across all orders.
 - GET /sales_order_details/<id> – Retrieves a single sales order detail by SalesOrderDetailID.
 - PUT /sales_order_details/<id> – Updates editable fields of an order detail; body is JSON.
 - DELETE /sales_order_details/<id> – Removes a sales order detail record.
 
-All endpoints return JSON with appropriate HTTP status codes (except DELETE which returns 204 No Content).
+All endpoints return JSON with appropriate HTTP status codes (POST returns 201 Created, DELETE returns 204 No Content).
 
 # Database / Excel Access
 

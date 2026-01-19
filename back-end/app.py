@@ -58,6 +58,119 @@ def get_sales_orders():
         return jsonify(orders_data), 200
 
 
+@app.route("/sales_orders", methods=["POST"])
+def create_sales_order():
+    """
+    Creates a new sales order.
+
+    Request Body:
+        JSON object with sales order fields. CustomerID and TerritoryID are required.
+        SalesOrderID can be provided or will be auto-generated.
+        Date fields should be in ISO format (YYYY-MM-DDTHH:MM:SS).
+
+    Returns:
+        JSON object containing the created sales order header with 201 status code.
+        Returns 400 for invalid requests.
+    """
+    if not request.is_json:
+        abort(400, description="Request body must be JSON")
+
+    data = request.get_json()
+
+    # Validate required fields
+    if "CustomerID" not in data:
+        abort(400, description="CustomerID is required")
+    if "TerritoryID" not in data:
+        abort(400, description="TerritoryID is required")
+
+    with get_db_session() as session:
+        # Create new order
+        order = SalesOrderHeader()
+
+        # Set all provided fields
+        if "SalesOrderID" in data:
+            order.SalesOrderID = data["SalesOrderID"]
+        order.CustomerID = data["CustomerID"]
+        order.TerritoryID = data["TerritoryID"]
+
+        # Handle optional fields
+        optional_fields = [
+            "RevisionNumber",
+            "OrderDate",
+            "DueDate",
+            "ShipDate",
+            "Status",
+            "OnlineOrderFlag",
+            "SalesOrderNumber",
+            "PurchaseOrderNumber",
+            "AccountNumber",
+            "SalesPersonID",
+            "BillToAddressID",
+            "ShipToAddressID",
+            "ShipMethodID",
+            "CreditCardID",
+            "CreditCardApprovalCode",
+            "CurrencyRateID",
+            "SubTotal",
+            "TaxAmt",
+            "Freight",
+            "TotalDue",
+        ]
+
+        for field in optional_fields:
+            if field in data:
+                value = data[field]
+
+                # Handle datetime fields
+                if field in ["OrderDate", "DueDate", "ShipDate"]:
+                    if value is not None:
+                        try:
+                            if isinstance(value, str):
+                                value = datetime.fromisoformat(
+                                    value.replace("Z", "+00:00")
+                                )
+                        except (ValueError, AttributeError):
+                            abort(
+                                400,
+                                description=f"Invalid date format for {field}. "
+                                "Use ISO format (YYYY-MM-DDTHH:MM:SS)",
+                            )
+
+                setattr(order, field, value)
+
+        session.add(order)
+        session.flush()  # Flush to get the generated ID
+
+        # Build response with created order data
+        order_data = {
+            "SalesOrderID": order.SalesOrderID,
+            "RevisionNumber": order.RevisionNumber,
+            "OrderDate": order.OrderDate.isoformat() if order.OrderDate else None,
+            "DueDate": order.DueDate.isoformat() if order.DueDate else None,
+            "ShipDate": order.ShipDate.isoformat() if order.ShipDate else None,
+            "Status": order.Status,
+            "OnlineOrderFlag": order.OnlineOrderFlag,
+            "SalesOrderNumber": order.SalesOrderNumber,
+            "PurchaseOrderNumber": order.PurchaseOrderNumber,
+            "AccountNumber": order.AccountNumber,
+            "CustomerID": order.CustomerID,
+            "SalesPersonID": order.SalesPersonID,
+            "TerritoryID": order.TerritoryID,
+            "BillToAddressID": order.BillToAddressID,
+            "ShipToAddressID": order.ShipToAddressID,
+            "ShipMethodID": order.ShipMethodID,
+            "CreditCardID": order.CreditCardID,
+            "CreditCardApprovalCode": order.CreditCardApprovalCode,
+            "CurrencyRateID": order.CurrencyRateID,
+            "SubTotal": order.SubTotal,
+            "TaxAmt": order.TaxAmt,
+            "Freight": order.Freight,
+            "TotalDue": order.TotalDue,
+        }
+
+        return jsonify(order_data), 201
+
+
 @app.route("/sales_orders/<int:order_id>", methods=["GET"])
 def get_sales_order(order_id):
     """
@@ -252,6 +365,40 @@ def update_sales_order(order_id):
         return jsonify(order_data), 200
 
 
+@app.route("/sales_orders/<int:order_id>", methods=["DELETE"])
+def delete_sales_order(order_id):
+    """
+    Deletes a sales order by SalesOrderID.
+
+    Args:
+        order_id: The SalesOrderID of the order to delete
+
+    Returns:
+        Returns 204 (No Content) on successful deletion.
+        Returns 404 if not found.
+    """
+    with get_db_session() as session:
+        order = (
+            session.query(SalesOrderHeader)
+            .filter(SalesOrderHeader.SalesOrderID == order_id)
+            .first()
+        )
+
+        if not order:
+            abort(404, description=f"Sales order with ID {order_id} not found")
+
+        # Delete associated order details first
+        session.query(SalesOrderDetail).filter(
+            SalesOrderDetail.SalesOrderID == order_id
+        ).delete()
+
+        # Delete the order
+        session.delete(order)
+        # Response will be committed by the context manager
+
+        return "", 204
+
+
 @app.route("/sales_order_details", methods=["GET"])
 def get_sales_order_details():
     """
@@ -291,6 +438,98 @@ def get_sales_order_details():
             details_data.append(detail_dict)
 
         return jsonify(details_data), 200
+
+
+@app.route("/sales_order_details", methods=["POST"])
+def create_sales_order_detail():
+    """
+    Creates a new sales order detail (line item).
+
+    Request Body:
+        JSON object with order detail fields. SalesOrderID and ProductID are required.
+        SalesOrderDetailID can be provided or will be auto-generated.
+
+    Returns:
+        JSON object containing the created sales order detail with product information
+        and 201 status code. Returns 400 for invalid requests, 404 if order not found.
+    """
+    if not request.is_json:
+        abort(400, description="Request body must be JSON")
+
+    data = request.get_json()
+
+    # Validate required fields
+    if "SalesOrderID" not in data:
+        abort(400, description="SalesOrderID is required")
+    if "ProductID" not in data:
+        abort(400, description="ProductID is required")
+
+    with get_db_session() as session:
+        # Verify the sales order exists
+        order = (
+            session.query(SalesOrderHeader)
+            .filter(SalesOrderHeader.SalesOrderID == data["SalesOrderID"])
+            .first()
+        )
+        if not order:
+            abort(
+                404,
+                description=f"Sales order with ID {data['SalesOrderID']} not found",
+            )
+
+        # Create new order detail
+        detail = SalesOrderDetail()
+
+        # Set required fields
+        detail.SalesOrderID = data["SalesOrderID"]
+        detail.ProductID = data["ProductID"]
+
+        # Set SalesOrderDetailID if provided
+        if "SalesOrderDetailID" in data:
+            detail.SalesOrderDetailID = data["SalesOrderDetailID"]
+
+        # Handle optional fields
+        optional_fields = [
+            "CarrierTrackingNumber",
+            "OrderQty",
+            "SpecialOfferID",
+            "UnitPrice",
+            "UnitPriceDiscount",
+            "LineTotal",
+        ]
+
+        for field in optional_fields:
+            if field in data:
+                setattr(detail, field, data[field])
+
+        session.add(detail)
+        session.flush()  # Flush to get the generated ID
+
+        # Build response
+        detail_data = {
+            "SalesOrderID": detail.SalesOrderID,
+            "SalesOrderDetailID": detail.SalesOrderDetailID,
+            "CarrierTrackingNumber": detail.CarrierTrackingNumber,
+            "OrderQty": detail.OrderQty,
+            "ProductID": detail.ProductID,
+            "SpecialOfferID": detail.SpecialOfferID,
+            "UnitPrice": detail.UnitPrice,
+            "UnitPriceDiscount": detail.UnitPriceDiscount,
+            "LineTotal": detail.LineTotal,
+        }
+
+        # Add product information if available
+        if detail.product:
+            detail_data["Product"] = {
+                "ProductID": detail.product.ProductID,
+                "Name": detail.product.Name,
+                "ProductNumber": detail.product.ProductNumber,
+                "Color": detail.product.Color,
+                "Size": detail.product.Size,
+                "ListPrice": detail.product.ListPrice,
+            }
+
+        return jsonify(detail_data), 201
 
 
 @app.route("/sales_order_details/<int:detail_id>", methods=["GET"])
