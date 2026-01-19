@@ -224,7 +224,7 @@ class SalesOrderDetail(Base):
     __tablename__ = "SalesOrderDetail"
 
     SalesOrderID: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("SalesOrderHeader.SalesOrderID"), primary_key=True
+        BigInteger, ForeignKey("SalesOrderHeader.SalesOrderID")
     )
     SalesOrderDetailID: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     CarrierTrackingNumber: Mapped[Optional[str]] = mapped_column(Text)

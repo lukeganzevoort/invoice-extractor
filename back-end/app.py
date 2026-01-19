@@ -252,5 +252,200 @@ def update_sales_order(order_id):
         return jsonify(order_data), 200
 
 
+@app.route("/sales_order_details", methods=["GET"])
+def get_sales_order_details():
+    """
+    Lists all sales order details across all orders.
+
+    Returns:
+        JSON array of all sales order details with product information.
+    """
+    with get_db_session() as session:
+        details = session.query(SalesOrderDetail).all()
+
+        details_data = []
+        for detail in details:
+            detail_dict = {
+                "SalesOrderID": detail.SalesOrderID,
+                "SalesOrderDetailID": detail.SalesOrderDetailID,
+                "CarrierTrackingNumber": detail.CarrierTrackingNumber,
+                "OrderQty": detail.OrderQty,
+                "ProductID": detail.ProductID,
+                "SpecialOfferID": detail.SpecialOfferID,
+                "UnitPrice": detail.UnitPrice,
+                "UnitPriceDiscount": detail.UnitPriceDiscount,
+                "LineTotal": detail.LineTotal,
+            }
+
+            # Add product information if available
+            if detail.product:
+                detail_dict["Product"] = {
+                    "ProductID": detail.product.ProductID,
+                    "Name": detail.product.Name,
+                    "ProductNumber": detail.product.ProductNumber,
+                    "Color": detail.product.Color,
+                    "Size": detail.product.Size,
+                    "ListPrice": detail.product.ListPrice,
+                }
+
+            details_data.append(detail_dict)
+
+        return jsonify(details_data), 200
+
+
+@app.route("/sales_order_details/<int:detail_id>", methods=["GET"])
+def get_sales_order_detail(detail_id):
+    """
+    Retrieves a single sales order detail by SalesOrderDetailID.
+
+    Args:
+        detail_id: The SalesOrderDetailID of the detail to retrieve
+
+    Returns:
+        JSON object containing the sales order detail with product information.
+        Returns 404 if not found.
+    """
+    with get_db_session() as session:
+        detail = (
+            session.query(SalesOrderDetail)
+            .filter(SalesOrderDetail.SalesOrderDetailID == detail_id)
+            .first()
+        )
+
+        if not detail:
+            abort(404, description=f"Sales order detail with ID {detail_id} not found")
+
+        # Build response
+        detail_data = {
+            "SalesOrderID": detail.SalesOrderID,
+            "SalesOrderDetailID": detail.SalesOrderDetailID,
+            "CarrierTrackingNumber": detail.CarrierTrackingNumber,
+            "OrderQty": detail.OrderQty,
+            "ProductID": detail.ProductID,
+            "SpecialOfferID": detail.SpecialOfferID,
+            "UnitPrice": detail.UnitPrice,
+            "UnitPriceDiscount": detail.UnitPriceDiscount,
+            "LineTotal": detail.LineTotal,
+        }
+
+        # Add product information if available
+        if detail.product:
+            detail_data["Product"] = {
+                "ProductID": detail.product.ProductID,
+                "Name": detail.product.Name,
+                "ProductNumber": detail.product.ProductNumber,
+                "Color": detail.product.Color,
+                "Size": detail.product.Size,
+                "ListPrice": detail.product.ListPrice,
+            }
+
+        return jsonify(detail_data), 200
+
+
+@app.route("/sales_order_details/<int:detail_id>", methods=["PUT"])
+def update_sales_order_detail(detail_id):
+    """
+    Updates editable fields of a sales order detail.
+
+    Args:
+        detail_id: The SalesOrderDetailID of the detail to update
+
+    Request Body:
+        JSON object with fields to update. SalesOrderDetailID cannot be updated.
+
+    Returns:
+        JSON object containing the updated sales order detail with product
+        information. Returns 404 if not found, 400 for invalid requests.
+    """
+    if not request.is_json:
+        abort(400, description="Request body must be JSON")
+
+    data = request.get_json()
+
+    # SalesOrderDetailID cannot be updated
+    if "SalesOrderDetailID" in data and data["SalesOrderDetailID"] != detail_id:
+        abort(400, description="SalesOrderDetailID cannot be modified")
+
+    with get_db_session() as session:
+        detail = (
+            session.query(SalesOrderDetail)
+            .filter(SalesOrderDetail.SalesOrderDetailID == detail_id)
+            .first()
+        )
+
+        if not detail:
+            abort(404, description=f"Sales order detail with ID {detail_id} not found")
+
+        # Editable fields for order details
+        editable_fields = [
+            "CarrierTrackingNumber",
+            "OrderQty",
+            "ProductID",
+            "SpecialOfferID",
+            "UnitPrice",
+            "UnitPriceDiscount",
+            "LineTotal",
+        ]
+
+        # Update only provided fields
+        for field in editable_fields:
+            if field in data:
+                setattr(detail, field, data[field])
+
+        # Build response
+        detail_data = {
+            "SalesOrderID": detail.SalesOrderID,
+            "SalesOrderDetailID": detail.SalesOrderDetailID,
+            "CarrierTrackingNumber": detail.CarrierTrackingNumber,
+            "OrderQty": detail.OrderQty,
+            "ProductID": detail.ProductID,
+            "SpecialOfferID": detail.SpecialOfferID,
+            "UnitPrice": detail.UnitPrice,
+            "UnitPriceDiscount": detail.UnitPriceDiscount,
+            "LineTotal": detail.LineTotal,
+        }
+
+        # Add product information if available
+        if detail.product:
+            detail_data["Product"] = {
+                "ProductID": detail.product.ProductID,
+                "Name": detail.product.Name,
+                "ProductNumber": detail.product.ProductNumber,
+                "Color": detail.product.Color,
+                "Size": detail.product.Size,
+                "ListPrice": detail.product.ListPrice,
+            }
+
+        return jsonify(detail_data), 200
+
+
+@app.route("/sales_order_details/<int:detail_id>", methods=["DELETE"])
+def delete_sales_order_detail(detail_id):
+    """
+    Deletes a sales order detail by SalesOrderDetailID.
+
+    Args:
+        detail_id: The SalesOrderDetailID of the detail to delete
+
+    Returns:
+        Returns 204 (No Content) on successful deletion.
+        Returns 404 if not found.
+    """
+    with get_db_session() as session:
+        detail = (
+            session.query(SalesOrderDetail)
+            .filter(SalesOrderDetail.SalesOrderDetailID == detail_id)
+            .first()
+        )
+
+        if not detail:
+            abort(404, description=f"Sales order detail with ID {detail_id} not found")
+
+        session.delete(detail)
+        # Response will be committed by the context manager
+
+        return "", 204
+
+
 if __name__ == "__main__":
     app.run(debug=True)
