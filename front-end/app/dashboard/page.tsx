@@ -71,6 +71,9 @@ export default function Dashboard() {
   >(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasNextPage, setHasNextPage] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
     fetchSalesOrders()
@@ -95,10 +98,46 @@ export default function Dashboard() {
       const result = await response.json()
       // Handle new paginated response format: { data: [...], pagination: {...} }
       setSalesOrders(result.data || result)
+      if (result.pagination) {
+        setCurrentPage(result.pagination.page)
+        setHasNextPage(result.pagination.has_next)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadMore = async () => {
+    if (loadingMore || !hasNextPage) return
+
+    try {
+      setLoadingMore(true)
+      const nextPage = currentPage + 1
+      const params = new URLSearchParams({
+        page: nextPage.toString(),
+        per_page: "10",
+        sort_by: "OrderDate",
+        order: "desc",
+      })
+      const response = await fetch(
+        `http://localhost:5000/sales_orders?${params.toString()}`
+      )
+      if (!response.ok) {
+        throw new Error("Failed to fetch more sales orders")
+      }
+      const result = await response.json()
+      // Append new orders to existing ones
+      setSalesOrders((prev) => [...prev, ...(result.data || [])])
+      if (result.pagination) {
+        setCurrentPage(result.pagination.page)
+        setHasNextPage(result.pagination.has_next)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred")
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -339,6 +378,17 @@ export default function Dashboard() {
           </TableBody>
         </Table>
       </div>
+      {hasNextPage && (
+        <div className="flex justify-center mt-4">
+          <Button
+            onClick={loadMore}
+            disabled={loadingMore}
+            variant="outline"
+          >
+            {loadingMore ? "Loading..." : "Load More"}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
