@@ -8,10 +8,12 @@ from datetime import datetime
 from db import get_db_session
 from document_processor import ALLOWED_EXTENSIONS, ALLOWED_MIME_TYPES, MAX_FILE_SIZE
 from flask import Flask, abort, jsonify, request
+from flask_cors import CORS
 from models import SalesOrderDetail, SalesOrderHeader
 from openai_full_data_extraction import extract_invoice_data_from_document
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # TODO: Add pagination to the sales orders endpoint
 
