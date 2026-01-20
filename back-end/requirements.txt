@@ -3,3 +3,10 @@ Flask
 pandas
 openpyxl
 sqlalchemy
+anthropic
+python-dotenv
+pytesseract
+Pillow
+pypdf
+openai
+pdf2image
