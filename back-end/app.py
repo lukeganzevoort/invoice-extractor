@@ -15,8 +15,6 @@ from openai_full_data_extraction import extract_invoice_data_from_document
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-# TODO: Add pagination to the sales orders endpoint
-
 
 @app.route("/upload", methods=["POST"])
 def upload_invoice():
@@ -86,13 +84,102 @@ def upload_invoice():
 @app.route("/sales_orders", methods=["GET"])
 def get_sales_orders():
     """
-    Lists all stored sales orders (header info).
+    Lists stored sales orders (header info) with pagination and sorting.
+
+    Query Parameters:
+        page (int): Page number (default: 1, minimum: 1)
+        per_page (int): Number of items per page (default: 10, minimum: 1, maximum: 100)
+        sort_by (str): Field to sort by (default: SalesOrderID). Valid fields:
+            SalesOrderID, OrderDate, DueDate, ShipDate, Status, SalesOrderNumber,
+            PurchaseOrderNumber, AccountNumber, CustomerID, SalesPersonID, TerritoryID,
+            SubTotal, TaxAmt, Freight, TotalDue
+        order (str): Sort order - 'asc' or 'desc' (default: 'asc')
 
     Returns:
-        JSON array of sales order headers with all header fields.
+        JSON object containing:
+            - data: Array of sales order headers with all header fields
+            - pagination: Object with pagination metadata (page, per_page, total, total_pages, has_next, has_prev)
     """
+    # Get pagination parameters from query string
+    try:
+        page = int(request.args.get("page", 1))
+        per_page = int(request.args.get("per_page", 10))
+    except (ValueError, TypeError):
+        abort(400, description="page and per_page must be valid integers")
+
+    # Validate pagination parameters
+    if page < 1:
+        abort(400, description="page must be greater than or equal to 1")
+    if per_page < 1:
+        abort(400, description="per_page must be greater than or equal to 1")
+    if per_page > 100:
+        abort(400, description="per_page cannot exceed 100")
+
+    # Get sorting parameters
+    sort_by = request.args.get("sort_by", "SalesOrderID")
+    order = request.args.get("order", "asc").lower()
+
+    # Define allowed sortable fields
+    allowed_sort_fields = {
+        "SalesOrderID",
+        "RevisionNumber",
+        "OrderDate",
+        "DueDate",
+        "ShipDate",
+        "Status",
+        "OnlineOrderFlag",
+        "SalesOrderNumber",
+        "PurchaseOrderNumber",
+        "AccountNumber",
+        "CustomerID",
+        "SalesPersonID",
+        "TerritoryID",
+        "BillToAddressID",
+        "ShipToAddressID",
+        "ShipMethodID",
+        "CreditCardID",
+        "CreditCardApprovalCode",
+        "CurrencyRateID",
+        "SubTotal",
+        "TaxAmt",
+        "Freight",
+        "TotalDue",
+    }
+
+    # Validate sort field
+    if sort_by not in allowed_sort_fields:
+        abort(
+            400,
+            description=f"Invalid sort_by field. Allowed fields: {', '.join(sorted(allowed_sort_fields))}",
+        )
+
+    # Validate order direction
+    if order not in ("asc", "desc"):
+        abort(400, description="order must be 'asc' or 'desc'")
+
     with get_db_session() as session:
-        orders = session.query(SalesOrderHeader).all()
+        # Get total count for pagination metadata
+        total = session.query(SalesOrderHeader).count()
+
+        # Calculate pagination
+        total_pages = (total + per_page - 1) // per_page if total > 0 else 0
+        offset = (page - 1) * per_page
+
+        # Get the sort column from the model
+        sort_column = getattr(SalesOrderHeader, sort_by)
+
+        # Apply ordering (descending if order is 'desc')
+        if order == "desc":
+            sort_column = sort_column.desc()
+
+        # Query with pagination and sorting
+        orders = (
+            session.query(SalesOrderHeader)
+            .order_by(sort_column)
+            .offset(offset)
+            .limit(per_page)
+            .all()
+        )
 
         # Convert orders to dictionaries
         orders_data = []
@@ -124,7 +211,17 @@ def get_sales_orders():
             }
             orders_data.append(order_dict)
 
-        return jsonify(orders_data), 200
+        # Build pagination metadata
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_prev": page > 1,
+        }
+
+        return jsonify({"data": orders_data, "pagination": pagination}), 200
 
 
 @app.route("/sales_orders", methods=["POST"])

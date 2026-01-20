@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Fragment, useEffect, useState } from "react"
 import {
   Table,
   TableBody,
@@ -79,12 +79,22 @@ export default function Dashboard() {
   const fetchSalesOrders = async () => {
     try {
       setLoading(true)
-      const response = await fetch("http://localhost:5000/sales_orders")
+      // Fetch page 1 with 10 entries, ordered by OrderDate in descending order
+      const params = new URLSearchParams({
+        page: "1",
+        per_page: "10",
+        sort_by: "OrderDate",
+        order: "desc",
+      })
+      const response = await fetch(
+        `http://localhost:5000/sales_orders?${params.toString()}`
+      )
       if (!response.ok) {
         throw new Error("Failed to fetch sales orders")
       }
-      const data = await response.json()
-      setSalesOrders(data)
+      const result = await response.json()
+      // Handle new paginated response format: { data: [...], pagination: {...} }
+      setSalesOrders(result.data || result)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
@@ -193,8 +203,8 @@ export default function Dashboard() {
                 const details = orderDetails.get(order.SalesOrderID) || []
 
                 return (
-                  <>
-                    <TableRow key={order.SalesOrderID}>
+                  <Fragment key={order.SalesOrderID}>
+                    <TableRow>
                       <TableCell>
                         <Button
                           variant="ghost"
@@ -322,7 +332,7 @@ export default function Dashboard() {
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </Fragment>
                 )
               })
             )}
