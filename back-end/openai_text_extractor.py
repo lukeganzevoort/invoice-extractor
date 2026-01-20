@@ -19,7 +19,7 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise ValueError(
-        "OPENAI_API_KEY or LLM_API_KEY environment variable is required. "
+        "OPENAI_API_KEY environment variable is required. "
         "Set it in .env file or environment."
     )
 
