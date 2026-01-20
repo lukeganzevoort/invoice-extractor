@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, useEffect, useState } from "react"
+import { Fragment, useEffect, useRef, useState } from "react"
 import {
   Table,
   TableBody,
@@ -74,6 +74,7 @@ export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState(1)
   const [hasNextPage, setHasNextPage] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchSalesOrders()
@@ -193,6 +194,22 @@ export default function Dashboard() {
     }).format(amount)
   }
 
+  const handleUploadClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // File selected - you can handle the upload here if needed
+      console.log("File selected:", file.name)
+    }
+    // Reset the input so the same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -214,7 +231,19 @@ export default function Dashboard() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-6">Sales Orders Dashboard</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Sales Orders Dashboard</h1>
+        <div className="relative">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            accept=".pdf,.png,.jpg,.jpeg"
+            onChange={handleFileChange}
+          />
+          <Button onClick={handleUploadClick}>Upload</Button>
+        </div>
+      </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
