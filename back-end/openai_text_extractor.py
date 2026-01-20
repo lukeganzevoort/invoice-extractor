@@ -93,6 +93,8 @@ def extract_text_from_image_gpt(file) -> str:
         )
 
         extracted_text = response.choices[0].message.content
+        if not extracted_text:
+            raise ValueError("No text extracted from image")
         return extracted_text.strip()
 
     except openai.APIError as e:
@@ -171,6 +173,8 @@ def extract_text_from_pdf_gpt(file) -> str:
                     max_tokens=4096,
                 )
 
+                if not response.choices[0].message.content:
+                    raise ValueError("No text extracted from page")
                 page_text = response.choices[0].message.content.strip()
                 text_parts.append(page_text)
 
@@ -216,3 +220,8 @@ def extract_text_from_document_gpt(file, filename: str) -> str:
         return extract_text_from_image_gpt(file)
     else:
         raise ValueError(f"Unsupported file type: {file_ext}")
+
+
+if __name__ == "__main__":
+    file = open("Sales Invoice.png", "rb")
+    print(extract_text_from_document_gpt(file, "Sales Invoice.png"))
