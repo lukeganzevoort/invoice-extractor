@@ -82,3 +82,8 @@ def extract_text_from_document(file, filename):
         return extract_text_from_image(file)
     else:
         raise ValueError(f"Unsupported file type: {file_ext}")
+
+
+if __name__ == "__main__":
+    file = open("Sales Invoice.png", "rb")
+    print(extract_text_from_document(file, "Sales Invoice.png"))
