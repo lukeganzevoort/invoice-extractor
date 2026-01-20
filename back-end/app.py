@@ -6,12 +6,83 @@ Provides endpoints for managing sales orders.
 from datetime import datetime
 
 from db import get_db_session
+from document_processor import (
+    ALLOWED_EXTENSIONS,
+    ALLOWED_MIME_TYPES,
+    MAX_FILE_SIZE,
+    extract_text_from_document,
+)
 from flask import Flask, abort, jsonify, request
 from models import SalesOrderDetail, SalesOrderHeader
 
 app = Flask(__name__)
 
 # TODO: Add pagination to the sales orders endpoint
+
+
+@app.route("/upload", methods=["POST"])
+def upload_invoice():
+    """
+    Upload and process an invoice document.
+
+    Accepts multipart/form-data with a file field.
+    Supported formats: PDF, PNG, JPG
+
+    Returns:
+        JSON object containing extracted invoice data with header and line_items.
+        Returns 400 for invalid requests, 413 for file too large,
+        415 for unsupported type, 500 for processing errors.
+    """
+    # Check if file is present
+    if "file" not in request.files:
+        abort(400, description="No file provided in request")
+
+    file = request.files["file"]
+
+    # Check if file was actually selected
+    if file.filename == "" or not file.filename:
+        abort(400, description="No file selected")
+
+    # Check if file extension is allowed
+    allow_file = (
+        "." in file.filename
+        and file.filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    )
+
+    # Validate file extension
+    if not allow_file:
+        allowed_types = ", ".join(ALLOWED_EXTENSIONS)
+        abort(415, description=f"Unsupported file type. Allowed types: {allowed_types}")
+
+    # Check file size
+    file.seek(0, 2)  # Seek to end
+    file_size = file.tell()
+    file.seek(0)  # Reset to beginning
+
+    if file_size > MAX_FILE_SIZE:
+        max_size_mb = MAX_FILE_SIZE / 1024 / 1024
+        abort(413, description=f"File too large. Maximum size: {max_size_mb}MB")
+
+    # Validate MIME type
+    if hasattr(file, "content_type") and file.content_type:
+        if file.content_type not in ALLOWED_MIME_TYPES:
+            abort(
+                415,
+                description=f"Unsupported MIME type: {file.content_type}",
+            )
+
+    try:
+        # Process the document
+        extracted_data = extract_text_from_document(file, file.filename)
+
+        return jsonify(extracted_data), 200
+
+    except ValueError as e:
+        # Handle processing errors (OCR, API, parsing)
+        abort(500, description=f"Error processing document: {str(e)}")
+    except Exception as e:
+        # Handle unexpected errors
+        abort(500, description=f"Unexpected error: {str(e)}")
 
 
 @app.route("/sales_orders", methods=["GET"])
