@@ -9,8 +9,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 
 interface SalesOrderHeader {
   SalesOrderID: number
@@ -63,6 +71,46 @@ interface SalesOrderWithDetails extends SalesOrderHeader {
   OrderDetails: SalesOrderDetail[]
 }
 
+interface ExtractedHeader {
+  SalesOrderNumber: string | null
+  OrderDate: string | null
+  DueDate: string | null
+  ShipDate: string | null
+  Status: number | null
+  OnlineOrderFlag: boolean | null
+  PurchaseOrderNumber: string | null
+  AccountNumber: string | null
+  SalesPersonID: number | null
+  BillToAddressID: number | null
+  ShipToAddressID: number | null
+  ShipMethodID: number | null
+  CreditCardID: number | null
+  CreditCardApprovalCode: string | null
+  CurrencyRateID: number | null
+  SubTotal: number | null
+  TaxAmt: number | null
+  Freight: number | null
+  TotalDue: number | null
+  CustomerID: number | null
+  TerritoryID: number | null
+}
+
+interface ExtractedLineItem {
+  OrderQty: number | null
+  ProductID: number | null
+  SpecialOfferID: number | null
+  UnitPrice: number | null
+  UnitPriceDiscount: number | null
+  LineTotal: number | null
+  CarrierTrackingNumber: string | null
+}
+
+interface ExtractedData {
+  header: ExtractedHeader
+  line_items: ExtractedLineItem[]
+  extracted_customer_name: string | null
+}
+
 export default function Dashboard() {
   const [salesOrders, setSalesOrders] = useState<SalesOrderHeader[]>([])
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set())
@@ -74,6 +122,13 @@ export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState(1)
   const [hasNextPage, setHasNextPage] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [formData, setFormData] = useState<{
+    header: ExtractedHeader
+    lineItems: ExtractedLineItem[]
+  } | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -198,16 +253,127 @@ export default function Dashboard() {
     fileInputRef.current?.click()
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file) {
-      // File selected - you can handle the upload here if needed
-      console.log("File selected:", file.name)
+    if (!file) return
+
+    try {
+      setUploading(true)
+      setError(null)
+
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch("http://localhost:5000/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ description: "Upload failed" }))
+        throw new Error(errorData.description || "Failed to upload file")
+      }
+
+      const extractedData: ExtractedData = await response.json()
+
+      // Set form data and open sheet
+      setFormData({
+        header: extractedData.header,
+        lineItems: extractedData.line_items || [],
+      })
+      setSheetOpen(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred during upload")
+    } finally {
+      setUploading(false)
+      // Reset the input so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
     }
-    // Reset the input so the same file can be selected again
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+  }
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!formData) return
+
+    try {
+      setSubmitting(true)
+      setError(null)
+
+      // Create the sales order header
+      const headerResponse = await fetch("http://localhost:5000/sales_orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData.header),
+      })
+
+      if (!headerResponse.ok) {
+        const errorData = await headerResponse.json().catch(() => ({ description: "Failed to create order" }))
+        throw new Error(errorData.description || "Failed to create sales order")
+      }
+
+      const createdOrder: SalesOrderHeader = await headerResponse.json()
+
+      // Create sales order details for each line item
+      const detailPromises = formData.lineItems.map((item) => {
+        if (!item.ProductID) {
+          throw new Error("ProductID is required for all line items")
+        }
+        return fetch("http://localhost:5000/sales_order_details", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...item,
+            SalesOrderID: createdOrder.SalesOrderID,
+            ProductID: item.ProductID,
+          }),
+        })
+      })
+
+      const detailResponses = await Promise.all(detailPromises)
+      const failedDetails = detailResponses.filter((r) => !r.ok)
+      if (failedDetails.length > 0) {
+        throw new Error("Failed to create some order details")
+      }
+
+      // Close sheet and refresh the orders list
+      setSheetOpen(false)
+      setFormData(null)
+      await fetchSalesOrders()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred during submission")
+    } finally {
+      setSubmitting(false)
     }
+  }
+
+  const updateHeaderField = (field: keyof ExtractedHeader, value: any) => {
+    if (!formData) return
+    setFormData({
+      ...formData,
+      header: {
+        ...formData.header,
+        [field]: value,
+      },
+    })
+  }
+
+  const updateLineItem = (index: number, field: keyof ExtractedLineItem, value: any) => {
+    if (!formData) return
+    const updatedItems = [...formData.lineItems]
+    updatedItems[index] = {
+      ...updatedItems[index],
+      [field]: value,
+    }
+    setFormData({
+      ...formData,
+      lineItems: updatedItems,
+    })
   }
 
   if (loading) {
@@ -240,8 +406,18 @@ export default function Dashboard() {
             className="hidden"
             accept=".pdf,.png,.jpg,.jpeg"
             onChange={handleFileChange}
+            disabled={uploading}
           />
-          <Button onClick={handleUploadClick}>Upload</Button>
+          <Button onClick={handleUploadClick} disabled={uploading}>
+            {uploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              "Upload"
+            )}
+          </Button>
         </div>
       </div>
       <div className="rounded-md border">
@@ -418,6 +594,211 @@ export default function Dashboard() {
           </Button>
         </div>
       )}
+
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent className="overflow-y-auto sm:max-w-2xl">
+          <SheetHeader>
+            <SheetTitle>Review and Edit Sales Order</SheetTitle>
+            <SheetDescription>
+              Review the extracted data and make any necessary edits before submitting.
+            </SheetDescription>
+          </SheetHeader>
+
+          {formData && (
+            <form onSubmit={handleFormSubmit} className="mt-6 space-y-6">
+              {/* Header Fields */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Order Header</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Customer ID *</label>
+                    <input
+                      type="number"
+                      required
+                      value={formData.header.CustomerID || ""}
+                      onChange={(e) =>
+                        updateHeaderField("CustomerID", e.target.value ? parseInt(e.target.value) : null)
+                      }
+                      className="w-full mt-1 px-3 py-2 border rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Territory ID *</label>
+                    <input
+                      type="number"
+                      required
+                      value={formData.header.TerritoryID || ""}
+                      onChange={(e) =>
+                        updateHeaderField("TerritoryID", e.target.value ? parseInt(e.target.value) : null)
+                      }
+                      className="w-full mt-1 px-3 py-2 border rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Sales Order Number</label>
+                    <input
+                      type="text"
+                      value={formData.header.SalesOrderNumber || ""}
+                      onChange={(e) => updateHeaderField("SalesOrderNumber", e.target.value || null)}
+                      className="w-full mt-1 px-3 py-2 border rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Order Date</label>
+                    <input
+                      type="date"
+                      value={formData.header.OrderDate ? formData.header.OrderDate.split("T")[0] : ""}
+                      onChange={(e) =>
+                        updateHeaderField("OrderDate", e.target.value ? `${e.target.value}T00:00:00` : null)
+                      }
+                      className="w-full mt-1 px-3 py-2 border rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Due Date</label>
+                    <input
+                      type="date"
+                      value={formData.header.DueDate ? formData.header.DueDate.split("T")[0] : ""}
+                      onChange={(e) =>
+                        updateHeaderField("DueDate", e.target.value ? `${e.target.value}T00:00:00` : null)
+                      }
+                      className="w-full mt-1 px-3 py-2 border rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Subtotal</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.header.SubTotal || ""}
+                      onChange={(e) =>
+                        updateHeaderField("SubTotal", e.target.value ? parseFloat(e.target.value) : null)
+                      }
+                      className="w-full mt-1 px-3 py-2 border rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Tax Amount</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.header.TaxAmt || ""}
+                      onChange={(e) =>
+                        updateHeaderField("TaxAmt", e.target.value ? parseFloat(e.target.value) : null)
+                      }
+                      className="w-full mt-1 px-3 py-2 border rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Freight</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.header.Freight || ""}
+                      onChange={(e) =>
+                        updateHeaderField("Freight", e.target.value ? parseFloat(e.target.value) : null)
+                      }
+                      className="w-full mt-1 px-3 py-2 border rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Total Due</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.header.TotalDue || ""}
+                      onChange={(e) =>
+                        updateHeaderField("TotalDue", e.target.value ? parseFloat(e.target.value) : null)
+                      }
+                      className="w-full mt-1 px-3 py-2 border rounded-md"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Line Items */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Line Items</h3>
+                {formData.lineItems.map((item, index) => (
+                  <div key={index} className="border rounded-lg p-4 space-y-3">
+                    <h4 className="font-medium">Item {index + 1}</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium">Product ID *</label>
+                        <input
+                          type="number"
+                          required
+                          value={item.ProductID || ""}
+                          onChange={(e) =>
+                            updateLineItem(index, "ProductID", e.target.value ? parseInt(e.target.value) : null)
+                          }
+                          className="w-full mt-1 px-3 py-2 border rounded-md"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Order Quantity</label>
+                        <input
+                          type="number"
+                          value={item.OrderQty || ""}
+                          onChange={(e) =>
+                            updateLineItem(index, "OrderQty", e.target.value ? parseInt(e.target.value) : null)
+                          }
+                          className="w-full mt-1 px-3 py-2 border rounded-md"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Unit Price</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={item.UnitPrice || ""}
+                          onChange={(e) =>
+                            updateLineItem(index, "UnitPrice", e.target.value ? parseFloat(e.target.value) : null)
+                          }
+                          className="w-full mt-1 px-3 py-2 border rounded-md"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Line Total</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={item.LineTotal || ""}
+                          onChange={(e) =>
+                            updateLineItem(index, "LineTotal", e.target.value ? parseFloat(e.target.value) : null)
+                          }
+                          className="w-full mt-1 px-3 py-2 border rounded-md"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <SheetFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSheetOpen(false)}
+                  disabled={submitting}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit"
+                  )}
+                </Button>
+              </SheetFooter>
+            </form>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
