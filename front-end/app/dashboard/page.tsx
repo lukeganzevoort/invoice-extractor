@@ -222,7 +222,7 @@ export default function Dashboard() {
               <TableHead className="w-12"></TableHead>
               <TableHead>Order ID</TableHead>
               <TableHead>Order Number</TableHead>
-              <TableHead>Order Date</TableHead>
+              <TableHead>Order Date ↓</TableHead>
               <TableHead>Due Date</TableHead>
               <TableHead>Customer ID</TableHead>
               <TableHead>Status</TableHead>
