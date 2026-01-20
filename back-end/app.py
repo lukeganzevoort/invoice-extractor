@@ -6,14 +6,10 @@ Provides endpoints for managing sales orders.
 from datetime import datetime
 
 from db import get_db_session
-from document_processor import (
-    ALLOWED_EXTENSIONS,
-    ALLOWED_MIME_TYPES,
-    MAX_FILE_SIZE,
-    extract_text_from_document,
-)
+from document_processor import ALLOWED_EXTENSIONS, ALLOWED_MIME_TYPES, MAX_FILE_SIZE
 from flask import Flask, abort, jsonify, request
 from models import SalesOrderDetail, SalesOrderHeader
+from openai_full_data_extraction import extract_invoice_data_from_document
 
 app = Flask(__name__)
 
@@ -72,8 +68,8 @@ def upload_invoice():
             )
 
     try:
-        # Process the document
-        extracted_data = extract_text_from_document(file, file.filename)
+        # Process the document and extract structured invoice data
+        extracted_data = extract_invoice_data_from_document(file, file.filename)
 
         return jsonify(extracted_data), 200
 

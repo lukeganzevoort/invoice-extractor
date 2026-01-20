@@ -167,6 +167,13 @@ def extract_data_from_image_gpt(file) -> dict:
             temperature=0.1,
         )
 
+        # Print token usage
+        if response.usage:
+            usage = response.usage
+            print(
+                f"[extract_data_from_image_gpt] Token usage - Prompt: {usage.prompt_tokens}, Completion: {usage.completion_tokens}, Total: {usage.total_tokens}"
+            )
+
         response_text = response.choices[0].message.content
         if not response_text:
             raise ValueError("Empty response from OpenAI API")
@@ -275,6 +282,13 @@ def extract_data_from_pdf_gpt(file) -> dict:
                     temperature=0.1,
                 )
 
+                # Print token usage
+                if response.usage:
+                    usage = response.usage
+                    print(
+                        f"[extract_data_from_pdf_gpt - single page] Token usage - Prompt: {usage.prompt_tokens}, Completion: {usage.completion_tokens}, Total: {usage.total_tokens}"
+                    )
+
                 response_text = response.choices[0].message.content
                 if not response_text:
                     raise ValueError("Empty response from OpenAI API")
@@ -330,6 +344,13 @@ def extract_data_from_pdf_gpt(file) -> dict:
                     max_tokens=4096,
                     temperature=0.1,
                 )
+
+                # Print token usage
+                if response.usage:
+                    usage = response.usage
+                    print(
+                        f"[extract_data_from_pdf_gpt - multi-page] Token usage - Prompt: {usage.prompt_tokens}, Completion: {usage.completion_tokens}, Total: {usage.total_tokens}"
+                    )
 
                 response_text = response.choices[0].message.content
                 if not response_text:
@@ -398,6 +419,13 @@ def extract_data_from_text_gpt(text_content: str) -> dict:
         max_tokens=4096,
         temperature=0.1,
     )
+
+    # Print token usage
+    if response.usage:
+        usage = response.usage
+        print(
+            f"[extract_data_from_text_gpt] Token usage - Prompt: {usage.prompt_tokens}, Completion: {usage.completion_tokens}, Total: {usage.total_tokens}"
+        )
 
     response_text = response.choices[0].message.content
     if not response_text:
