@@ -23,7 +23,7 @@ This case study was designed to better understand approach to problem solving, s
 A modern React/Next.js application providing an intuitive user interface for document upload, data visualization, and management.
 
 **Technology Stack:**
-- **Framework:** Next.js 14+ (App Router)
+- **Framework:** Next.js 16 (App Router)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS
 - **UI Components:** Custom components with shadcn/ui patterns
@@ -34,7 +34,6 @@ A modern React/Next.js application providing an intuitive user interface for doc
 - Real-time processing status indicators
 - Interactive data tables for viewing extracted invoice data
 - Inline editing capabilities for extracted metadata
-- Responsive design with dark mode support
 
 **Getting Started:**
 ```bash
@@ -51,7 +50,7 @@ A Flask-based REST API that handles document processing, LLM-based extraction, a
 
 **Technology Stack:**
 - **Framework:** Flask
-- **Language:** Python 3.11+
+- **Language:** Python 3.11
 - **ORM:** SQLAlchemy
 - **Database:** SQLite (easily swappable for PostgreSQL)
 - **LLM Integration:** OpenAI API (configurable for other providers)
@@ -83,9 +82,9 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # Set up environment variables
-echo "LLM_API_KEY=your_api_key_here" > .env
+echo "OPENAI_API_KEY=your_api_key_here" > .env
 
-# Initialize database
+# Initialize database (copy the provided Excel file into this directory)
 python init_db.py
 
 # Run the server
@@ -113,7 +112,6 @@ invoice-extractor/
 │   ├── app.py               # Main Flask application
 │   ├── models.py            # SQLAlchemy ORM models
 │   ├── db.py                # Database configuration
-│   ├── document_processor.py # Document handling utilities
 │   ├── openai_full_data_extraction.py # LLM extraction logic
 │   ├── init_db.py           # Database initialization
 │   └── requirements.txt     # Python dependencies
@@ -177,7 +175,7 @@ The application extracts and stores invoice data in a structure that mirrors typ
 Create a `.env` file in the `back-end` directory:
 
 ```env
-LLM_API_KEY=your_api_key_here
+OPENAI_API_KEY=your_api_key_here
 FLASK_ENV=development
 ```
 
