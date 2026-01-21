@@ -72,34 +72,20 @@ The JSON output must have this structure:
     "SalesOrderNumber": "string or null",
     "OrderDate": "ISO date string (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS) or null",
     "DueDate": "ISO date string or null",
-    "ShipDate": "ISO date string or null",
-    "Status": "integer or null",
-    "OnlineOrderFlag": "boolean or null",
     "PurchaseOrderNumber": "string or null",
     "AccountNumber": "string or null",
-    "SalesPersonID": "number or null",
-    "BillToAddressID": "integer or null",
-    "ShipToAddressID": "integer or null",
-    "ShipMethodID": "integer or null",
-    "CreditCardID": "number or null",
-    "CreditCardApprovalCode": "string or null",
-    "CurrencyRateID": "number or null",
     "SubTotal": "number or null",
     "TaxAmt": "number or null",
-    "Freight": "number or null",
     "TotalDue": "number or null",
-    "CustomerID": null,
-    "TerritoryID": null
   },
   "line_items": [
     {
       "OrderQty": "integer or null",
       "ProductID": null,
-      "SpecialOfferID": "integer or null",
+      "ProductDescription": "string or null",
       "UnitPrice": "number or null",
       "UnitPriceDiscount": "number or null",
       "LineTotal": "number or null",
-      "CarrierTrackingNumber": "string or null"
     }
   ],
   "extracted_customer_name": "string or null"
@@ -110,10 +96,10 @@ Important extraction guidelines:
 - Extract all monetary values as numbers (not strings)
 - Extract quantities as integers
 - For fields not found in the document, use null
-- Extract the customer name/billing name for database matching
+- Extract the customer name/billing name and set it to the "extracted_customer_name" field for database matching
 - Extract all line items from the invoice table
-- CustomerID and TerritoryID should always be null (will be matched from database)
-- ProductID should always be null (product matching not implemented)
+- ProductID is also known as the Product Number
+- ProductDescription is also known as the Product Name
 
 Return ONLY valid JSON, no additional text, markdown formatting, or commentary."""
     return prompt
@@ -449,16 +435,19 @@ def extract_data_from_text_gpt(text_content: str) -> dict:
         )
 
 
-def match_customer_to_database(customer_name: str, session) -> tuple:
+def match_customer_to_database(
+    customer_name: str, session
+) -> tuple[Customer, IndividualCustomer | StoreCustomer] | tuple[None, None]:
     """
-    Match extracted customer name to CustomerID in database.
+    Match extracted customer name to Customer object in database.
 
     Args:
         customer_name: Customer name extracted from document
         session: Database session
 
     Returns:
-        tuple: (CustomerID, TerritoryID) or (None, None) if not found
+        tuple: (Customer, IndividualCustomer) or (Customer, StoreCustomer) if found,
+               or (None, None) if not found
     """
     if not customer_name:
         return None, None
@@ -487,7 +476,7 @@ def match_customer_to_database(customer_name: str, session) -> tuple:
                 .first()
             )
             if customer:
-                return customer.CustomerID, customer.TerritoryID
+                return customer, individual
 
     # Try to match store customer (Name)
     store = (
@@ -503,7 +492,7 @@ def match_customer_to_database(customer_name: str, session) -> tuple:
             .first()
         )
         if customer:
-            return customer.CustomerID, customer.TerritoryID
+            return customer, store
 
     return None, None
 
@@ -523,31 +512,99 @@ def extract_invoice_data_from_document(file, filename: str) -> dict:
     Raises:
         ValueError: If file type is not supported or processing fails
     """
-    file_ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    # file_ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
-    # Extract structured data based on file type
-    if file_ext == "pdf":
-        extracted_data = extract_data_from_pdf_gpt(file)
-    elif file_ext in {"png", "jpg", "jpeg"}:
-        file.seek(0)
-        extracted_data = extract_data_from_image_gpt(file)
-    else:
-        raise ValueError(f"Unsupported file type: {file_ext}")
+    # # Extract structured data based on file type
+    # if file_ext == "pdf":
+    #     extracted_data = extract_data_from_pdf_gpt(file)
+    # elif file_ext in {"png", "jpg", "jpeg"}:
+    #     file.seek(0)
+    #     extracted_data = extract_data_from_image_gpt(file)
+    # else:
+    #     raise ValueError(f"Unsupported file type: {file_ext}")
+
+    extracted_data = {
+        "header": {
+            "SalesOrderNumber": "11223344",
+            "OrderDate": "2025-06-04",
+            "DueDate": None,
+            "PurchaseOrderNumber": None,
+            "AccountNumber": None,
+            "SubTotal": 1350.0,
+            "TaxAmt": 0.0,
+            "TotalDue": 1350.0,
+        },
+        "line_items": [
+            {
+                "OrderQty": 1,
+                "ProductID": None,
+                "ProductDescription": "Half-Finger Gloves, M",
+                "UnitPrice": 50.0,
+                "UnitPriceDiscount": None,
+                "LineTotal": 50.0,
+            },
+            {
+                "OrderQty": 2,
+                "ProductID": None,
+                "ProductDescription": "Classic Vest, S",
+                "UnitPrice": 600.0,
+                "UnitPriceDiscount": None,
+                "LineTotal": 1200.0,
+            },
+        ],
+        "extracted_customer_name": "Isabella Torres",
+    }
+
+    print(extracted_data)
 
     # Match customer if customer name was extracted
     if "extracted_customer_name" in extracted_data:
         customer_name = extracted_data.get("extracted_customer_name")
         if customer_name:
             with get_db_session() as session:
-                customer_id, territory_id = match_customer_to_database(
+                customer, customer_detail = match_customer_to_database(
                     customer_name, session
                 )
-                # Update header with matched IDs
-                if "header" in extracted_data:
-                    if customer_id:
-                        extracted_data["header"]["CustomerID"] = customer_id
-                    if territory_id:
-                        extracted_data["header"]["TerritoryID"] = territory_id
+                if customer:
+                    extracted_data["customer"] = {
+                        "CustomerID": customer.CustomerID,
+                        "PersonID": customer.PersonID,
+                        "StoreID": customer.StoreID,
+                        "TerritoryID": customer.TerritoryID,
+                        "AccountNumber": customer.AccountNumber,
+                    }
+                else:
+                    extracted_data["customer"] = None
+
+                if customer_detail:
+                    if isinstance(customer_detail, IndividualCustomer):
+                        extracted_data["customer_detail"] = {
+                            "BusinessEntityID": customer_detail.BusinessEntityID,
+                            "FirstName": customer_detail.FirstName,
+                            "MiddleName": customer_detail.MiddleName,
+                            "LastName": customer_detail.LastName,
+                            "AddressType": customer_detail.AddressType,
+                            "AddressLine1": customer_detail.AddressLine1,
+                            "AddressLine2": customer_detail.AddressLine2,
+                            "City": customer_detail.City,
+                            "StateProvinceName": customer_detail.StateProvinceName,
+                            "PostalCode": customer_detail.PostalCode,
+                            "CountryRegionName": customer_detail.CountryRegionName,
+                        }
+                    else:  # StoreCustomer
+                        extracted_data["customer_detail"] = {
+                            "BusinessEntityID": customer_detail.BusinessEntityID,
+                            "Name": customer_detail.Name,
+                            "AddressType": customer_detail.AddressType,
+                            "AddressLine1": customer_detail.AddressLine1,
+                            "AddressLine2": customer_detail.AddressLine2,
+                            "City": customer_detail.City,
+                            "StateProvinceName": customer_detail.StateProvinceName,
+                            "PostalCode": customer_detail.PostalCode,
+                            "CountryRegionName": customer_detail.CountryRegionName,
+                        }
+                else:
+                    extracted_data["customer_detail"] = None
 
     return extracted_data
 

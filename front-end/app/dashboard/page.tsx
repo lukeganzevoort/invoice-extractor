@@ -91,8 +91,6 @@ interface ExtractedHeader {
   TaxAmt: number | null
   Freight: number | null
   TotalDue: number | null
-  CustomerID: number | null
-  TerritoryID: number | null
 }
 
 interface ExtractedLineItem {
@@ -105,10 +103,46 @@ interface ExtractedLineItem {
   CarrierTrackingNumber: string | null
 }
 
+interface Customer {
+  CustomerID: number
+  PersonID: number | null
+  StoreID: number | null
+  TerritoryID: number
+  AccountNumber: string | null
+}
+
+interface IndividualCustomer {
+  BusinessEntityID: number
+  FirstName: string | null
+  MiddleName: string | null
+  LastName: string | null
+  AddressType: string | null
+  AddressLine1: string | null
+  AddressLine2: string | null
+  City: string | null
+  StateProvinceName: string | null
+  PostalCode: string | null
+  CountryRegionName: string | null
+}
+
+interface StoreCustomer {
+  BusinessEntityID: number
+  Name: string | null
+  AddressType: string | null
+  AddressLine1: string | null
+  AddressLine2: string | null
+  City: string | null
+  StateProvinceName: string | null
+  PostalCode: string | null
+  CountryRegionName: string | null
+}
+
 interface ExtractedData {
   header: ExtractedHeader
   line_items: ExtractedLineItem[]
   extracted_customer_name: string | null
+  customer: Customer | null
+  customer_detail: IndividualCustomer | StoreCustomer | null
 }
 
 export default function Dashboard() {
@@ -127,6 +161,8 @@ export default function Dashboard() {
   const [formData, setFormData] = useState<{
     header: ExtractedHeader
     lineItems: ExtractedLineItem[]
+    customer: Customer | null
+    customerDetail: IndividualCustomer | StoreCustomer | null
   } | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -275,11 +311,14 @@ export default function Dashboard() {
       }
 
       const extractedData: ExtractedData = await response.json()
+      console.log(extractedData)
 
       // Set form data and open sheet
       setFormData({
         header: extractedData.header,
         lineItems: extractedData.line_items || [],
+        customer: extractedData.customer || null,
+        customerDetail: extractedData.customer_detail || null,
       })
       setSheetOpen(true)
     } catch (err) {
@@ -297,9 +336,21 @@ export default function Dashboard() {
     e.preventDefault()
     if (!formData) return
 
+    if (!formData.customer) {
+      setError("Customer information is required")
+      return
+    }
+
     try {
       setSubmitting(true)
       setError(null)
+
+      // Extract CustomerID and TerritoryID from customer object
+      const headerData = {
+        ...formData.header,
+        CustomerID: formData.customer.CustomerID,
+        TerritoryID: formData.customer.TerritoryID,
+      }
 
       // Create the sales order header
       const headerResponse = await fetch("http://localhost:5000/sales_orders", {
@@ -307,7 +358,7 @@ export default function Dashboard() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData.header),
+        body: JSON.stringify(headerData),
       })
 
       if (!headerResponse.ok) {
@@ -457,9 +508,8 @@ export default function Dashboard() {
                           onClick={() => toggleOrder(order.SalesOrderID)}
                         >
                           <ChevronDown
-                            className={`h-4 w-4 transition-transform ${
-                              isExpanded ? "rotate-180" : ""
-                            }`}
+                            className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""
+                              }`}
                           />
                         </Button>
                       </TableCell>
@@ -524,8 +574,8 @@ export default function Dashboard() {
                                           <TableCell>
                                             {detail.UnitPriceDiscount
                                               ? `${(
-                                                  detail.UnitPriceDiscount * 100
-                                                ).toFixed(2)}%`
+                                                detail.UnitPriceDiscount * 100
+                                              ).toFixed(2)}%`
                                               : "N/A"}
                                           </TableCell>
                                           <TableCell className="text-right">
@@ -605,35 +655,76 @@ export default function Dashboard() {
           </SheetHeader>
 
           {formData && (
-            <form onSubmit={handleFormSubmit} className="mt-6 space-y-6">
+            <form onSubmit={handleFormSubmit} className="mt-6 space-y-6 px-4">
+              {/* Customer Information */}
+              {formData.customer && (
+                <div className="space-y-4 border rounded-lg p-4 bg-muted/50">
+                  <h3 className="text-lg font-semibold">Customer Information</h3>
+                  {formData.customerDetail && (
+                    <div className="space-y-2">
+                      {"FirstName" in formData.customerDetail ? (
+                        // Individual Customer
+                        <div>
+                          <p className="text-sm font-medium">Name</p>
+                          <p className="text-sm">
+                            {[
+                              formData.customerDetail.FirstName,
+                              formData.customerDetail.MiddleName,
+                              formData.customerDetail.LastName,
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                          </p>
+                        </div>
+                      ) : (
+                        // Store Customer
+                        <div>
+                          <p className="text-sm font-medium">Store Name</p>
+                          <p className="text-sm">{formData.customerDetail.Name || "N/A"}</p>
+                        </div>
+                      )}
+                      {formData.customerDetail.AddressLine1 && (
+                        <div>
+                          <p className="text-sm font-medium">Address</p>
+                          <p className="text-sm">
+                            {[
+                              formData.customerDetail.AddressLine1,
+                              formData.customerDetail.AddressLine2,
+                              formData.customerDetail.City,
+                              formData.customerDetail.StateProvinceName,
+                              formData.customerDetail.PostalCode,
+                            ]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Customer ID</p>
+                      <p className="font-semibold">{formData.customer.CustomerID}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Territory ID</p>
+                      <p className="font-semibold">{formData.customer.TerritoryID}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {!formData.customer && (
+                <div className="border rounded-lg p-4 bg-destructive/10">
+                  <p className="text-sm text-destructive">
+                    No customer match found. Please ensure the customer exists in the database.
+                  </p>
+                </div>
+              )}
+
               {/* Header Fields */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Order Header</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Customer ID *</label>
-                    <input
-                      type="number"
-                      required
-                      value={formData.header.CustomerID || ""}
-                      onChange={(e) =>
-                        updateHeaderField("CustomerID", e.target.value ? parseInt(e.target.value) : null)
-                      }
-                      className="w-full mt-1 px-3 py-2 border rounded-md"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Territory ID *</label>
-                    <input
-                      type="number"
-                      required
-                      value={formData.header.TerritoryID || ""}
-                      onChange={(e) =>
-                        updateHeaderField("TerritoryID", e.target.value ? parseInt(e.target.value) : null)
-                      }
-                      className="w-full mt-1 px-3 py-2 border rounded-md"
-                    />
-                  </div>
                   <div>
                     <label className="text-sm font-medium">Sales Order Number</label>
                     <input

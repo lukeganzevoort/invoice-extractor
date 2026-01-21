@@ -70,7 +70,7 @@ def upload_invoice():
     try:
         # Process the document and extract structured invoice data
         extracted_data = extract_invoice_data_from_document(file, file.filename)
-
+        print(extracted_data)
         return jsonify(extracted_data), 200
 
     except ValueError as e:
