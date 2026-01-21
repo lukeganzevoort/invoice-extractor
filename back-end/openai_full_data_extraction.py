@@ -12,7 +12,7 @@ from io import BytesIO
 import openai
 from db import get_db_session
 from dotenv import load_dotenv
-from models import Customer, IndividualCustomer, StoreCustomer
+from models import Customer, IndividualCustomer, Product, StoreCustomer
 from PIL import Image
 from pypdf import PdfReader
 
@@ -76,6 +76,7 @@ The JSON output must have this structure:
     "AccountNumber": "string or null",
     "SubTotal": "number or null",
     "TaxAmt": "number or null",
+    "Freight": "number or null",
     "TotalDue": "number or null",
   },
   "line_items": [
@@ -100,6 +101,7 @@ Important extraction guidelines:
 - Extract all line items from the invoice table
 - ProductID is also known as the Product Number
 - ProductDescription is also known as the Product Name
+- Extract the Freight/Shipping value from the invoice and set it to the "Freight" field
 
 Return ONLY valid JSON, no additional text, markdown formatting, or commentary."""
     return prompt
@@ -497,6 +499,48 @@ def match_customer_to_database(
     return None, None
 
 
+def match_product_to_database(
+    product_id: str | None,
+    product_description: str | None,
+    session,
+) -> Product | None:
+    """
+    Match extracted product information to Product object in database.
+
+    Args:
+        product_id: Product ID/Number extracted from document (matches ProductNumber)
+        product_description: Product description/name extracted from document (matches Name)
+        session: Database session
+
+    Returns:
+        Product: Matched Product object if found, None otherwise
+    """
+    # Try to match by ProductNumber first (most reliable)
+    if product_id:
+        product_id = product_id.strip()
+        product = (
+            session.query(Product)
+            .filter(Product.ProductNumber.ilike(f"%{product_id}%"))
+            .first()
+        )
+        if product:
+            return product
+
+    # Try to match by Name/Description
+    if product_description:
+        product_description = product_description.strip()
+        # Try exact match first
+        product = (
+            session.query(Product)
+            .filter(Product.Name.ilike(f"%{product_description}%"))
+            .first()
+        )
+        if product:
+            return product
+
+    return None
+
+
 def extract_invoice_data_from_document(file, filename: str) -> dict:
     """
     Extract structured invoice data directly from a document (image or PDF) using OpenAI GPT API.
@@ -605,6 +649,31 @@ def extract_invoice_data_from_document(file, filename: str) -> dict:
                         }
                 else:
                     extracted_data["customer_detail"] = None
+
+    # Match products for each line item
+    if "line_items" in extracted_data and extracted_data["line_items"]:
+        with get_db_session() as session:
+            for line_item in extracted_data["line_items"]:
+                product_id = line_item.get("ProductID")
+                product_description = line_item.get("ProductDescription")
+
+                product = match_product_to_database(
+                    product_id, product_description, session
+                )
+
+                if product:
+                    line_item["product"] = {
+                        "ProductID": product.ProductID,
+                        "Name": product.Name,
+                        "ProductNumber": product.ProductNumber,
+                        "Color": product.Color,
+                        "Size": product.Size,
+                        "StandardCost": product.StandardCost,
+                        "ListPrice": product.ListPrice,
+                        "ProductSubcategoryID": product.ProductSubcategoryID,
+                    }
+                else:
+                    line_item["product"] = None
 
     return extracted_data
 

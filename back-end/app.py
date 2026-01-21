@@ -12,6 +12,7 @@ from flask_cors import CORS
 from models import (
     Customer,
     IndividualCustomer,
+    Product,
     SalesOrderDetail,
     SalesOrderHeader,
     StoreCustomer,
@@ -21,6 +22,34 @@ from sqlalchemy import or_
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+
+
+def product_to_dict(product: Product) -> dict:
+    """
+    Convert a Product model instance to a dictionary with all product fields.
+
+    Args:
+        product: Product model instance
+
+    Returns:
+        dict: Dictionary containing all product fields
+    """
+    return {
+        "ProductID": product.ProductID,
+        "Name": product.Name,
+        "ProductNumber": product.ProductNumber,
+        "MakeFlag": product.MakeFlag,
+        "FinishedGoodsFlag": product.FinishedGoodsFlag,
+        "Color": product.Color,
+        "StandardCost": product.StandardCost,
+        "ListPrice": product.ListPrice,
+        "Size": product.Size,
+        "ProductLine": product.ProductLine,
+        "Class": product.Class,
+        "Style": product.Style,
+        "ProductSubcategoryID": product.ProductSubcategoryID,
+        "ProductModelID": product.ProductModelID,
+    }
 
 
 @app.route("/upload", methods=["POST"])
@@ -410,14 +439,7 @@ def get_sales_order(order_id):
 
             # Add product information if available
             if detail.product:
-                detail_dict["Product"] = {
-                    "ProductID": detail.product.ProductID,
-                    "Name": detail.product.Name,
-                    "ProductNumber": detail.product.ProductNumber,
-                    "Color": detail.product.Color,
-                    "Size": detail.product.Size,
-                    "ListPrice": detail.product.ListPrice,
-                }
+                detail_dict["Product"] = product_to_dict(detail.product)
 
             order_data["OrderDetails"].append(detail_dict)
 
@@ -599,14 +621,7 @@ def get_sales_order_details():
 
             # Add product information if available
             if detail.product:
-                detail_dict["Product"] = {
-                    "ProductID": detail.product.ProductID,
-                    "Name": detail.product.Name,
-                    "ProductNumber": detail.product.ProductNumber,
-                    "Color": detail.product.Color,
-                    "Size": detail.product.Size,
-                    "ListPrice": detail.product.ListPrice,
-                }
+                detail_dict["Product"] = product_to_dict(detail.product)
 
             details_data.append(detail_dict)
 
@@ -693,14 +708,7 @@ def create_sales_order_detail():
 
         # Add product information if available
         if detail.product:
-            detail_data["Product"] = {
-                "ProductID": detail.product.ProductID,
-                "Name": detail.product.Name,
-                "ProductNumber": detail.product.ProductNumber,
-                "Color": detail.product.Color,
-                "Size": detail.product.Size,
-                "ListPrice": detail.product.ListPrice,
-            }
+            detail_data["Product"] = product_to_dict(detail.product)
 
         return jsonify(detail_data), 201
 
@@ -742,14 +750,7 @@ def get_sales_order_detail(detail_id):
 
         # Add product information if available
         if detail.product:
-            detail_data["Product"] = {
-                "ProductID": detail.product.ProductID,
-                "Name": detail.product.Name,
-                "ProductNumber": detail.product.ProductNumber,
-                "Color": detail.product.Color,
-                "Size": detail.product.Size,
-                "ListPrice": detail.product.ListPrice,
-            }
+            detail_data["Product"] = product_to_dict(detail.product)
 
         return jsonify(detail_data), 200
 
@@ -819,14 +820,7 @@ def update_sales_order_detail(detail_id):
 
         # Add product information if available
         if detail.product:
-            detail_data["Product"] = {
-                "ProductID": detail.product.ProductID,
-                "Name": detail.product.Name,
-                "ProductNumber": detail.product.ProductNumber,
-                "Color": detail.product.Color,
-                "Size": detail.product.Size,
-                "ListPrice": detail.product.ListPrice,
-            }
+            detail_data["Product"] = product_to_dict(detail.product)
 
         return jsonify(detail_data), 200
 
@@ -1029,6 +1023,72 @@ def search_customers():
                     },
                 }
                 results.append(customer_dict)
+
+    # Limit results
+    results = results[:limit]
+
+    return jsonify(results), 200
+
+
+@app.route("/products/search", methods=["GET"])
+def search_products():
+    """
+    Search for products by ID, name, or product number.
+
+    Query Parameters:
+        q (str): Search query (searches by product ID, name, or product number)
+        limit (int): Maximum number of results (default: 20, maximum: 100)
+
+    Returns:
+        JSON array of product objects with all product details.
+        Each product object includes all fields from the Product table.
+    """
+    query = request.args.get("q", "").strip()
+    limit = min(int(request.args.get("limit", 20)), 100)
+
+    if not query:
+        return jsonify([]), 200
+
+    results = []
+
+    with get_db_session() as session:
+        # Try to match by ProductID if query is numeric
+        if query.isdigit():
+            product_id = int(query)
+            product = (
+                session.query(Product).filter(Product.ProductID == product_id).first()
+            )
+            if product:
+                results.append(product_to_dict(product))
+
+        # Search by product name
+        if len(results) < limit:
+            search_term = f"%{query}%"
+            products_by_name = (
+                session.query(Product)
+                .filter(Product.Name.ilike(search_term))
+                .limit(limit)
+                .all()
+            )
+
+            for product in products_by_name:
+                # Avoid duplicates if already found by ID
+                if not any(r["ProductID"] == product.ProductID for r in results):
+                    results.append(product_to_dict(product))
+
+        # Search by product number
+        if len(results) < limit:
+            products_by_number = (
+                session.query(Product)
+                .filter(Product.ProductNumber.ilike(f"%{query}%"))
+                .limit(limit)
+                .all()
+            )
+
+            for product in products_by_number:
+                # Avoid duplicates
+                if not any(r["ProductID"] == product.ProductID for r in results):
+                    results.append(product_to_dict(product))
 
     # Limit results
     results = results[:limit]

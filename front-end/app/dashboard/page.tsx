@@ -52,7 +52,9 @@ interface Product {
   ProductNumber: string | null
   Color: string | null
   Size: string | null
+  StandardCost: number | null
   ListPrice: number | null
+  ProductSubcategoryID: number | null
 }
 
 interface SalesOrderDetail {
@@ -96,11 +98,13 @@ interface ExtractedHeader {
 interface ExtractedLineItem {
   OrderQty: number | null
   ProductID: number | null
+  ProductDescription: string | null
   SpecialOfferID: number | null
   UnitPrice: number | null
   UnitPriceDiscount: number | null
   LineTotal: number | null
   CarrierTrackingNumber: string | null
+  product: Product | null
 }
 
 interface Customer {
@@ -173,36 +177,47 @@ export default function Dashboard() {
   const [customerSearchLoading, setCustomerSearchLoading] = useState(false)
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const customerSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [productSearchQueries, setProductSearchQueries] = useState<Map<number, string>>(new Map())
+  const [productSearchResults, setProductSearchResults] = useState<Map<number, Product[]>>(new Map())
+  const [productSearchLoading, setProductSearchLoading] = useState<Map<number, boolean>>(new Map())
+  const [showProductDropdowns, setShowProductDropdowns] = useState<Map<number, boolean>>(new Map())
+  const productSearchTimeoutRefs = useRef<Map<number, NodeJS.Timeout>>(new Map())
 
   useEffect(() => {
     fetchSalesOrders()
   }, [])
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (customerSearchTimeoutRef.current) {
         clearTimeout(customerSearchTimeoutRef.current)
       }
+      productSearchTimeoutRefs.current.forEach((timeout) => {
+        clearTimeout(timeout)
+      })
     }
   }, [])
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement
       if (!target.closest(".customer-search-container")) {
         setShowCustomerDropdown(false)
       }
+      if (!target.closest(".product-search-container")) {
+        setShowProductDropdowns(new Map())
+      }
     }
 
-    if (showCustomerDropdown) {
+    if (showCustomerDropdown || showProductDropdowns.size > 0) {
       document.addEventListener("mousedown", handleClickOutside)
       return () => {
         document.removeEventListener("mousedown", handleClickOutside)
       }
     }
-  }, [showCustomerDropdown])
+  }, [showCustomerDropdown, showProductDropdowns])
 
   const fetchSalesOrders = async () => {
     try {
@@ -347,12 +362,27 @@ export default function Dashboard() {
       console.log(extractedData)
 
       // Set form data and open sheet
+      const lineItems = (extractedData.line_items || []).map((item) => ({
+        ...item,
+        product: item.product || null,
+      }))
       setFormData({
         header: extractedData.header,
-        lineItems: extractedData.line_items || [],
+        lineItems,
         customer: extractedData.customer || null,
         customerDetail: extractedData.customer_detail || null,
       })
+
+      // Initialize product search queries for each line item
+      const newProductQueries = new Map<number, string>()
+      lineItems.forEach((item, index) => {
+        if (item.product) {
+          newProductQueries.set(index, item.product.Name || item.product.ProductNumber || "")
+        } else if (item.ProductDescription) {
+          newProductQueries.set(index, item.ProductDescription)
+        }
+      })
+      setProductSearchQueries(newProductQueries)
 
       // Initialize customer search query if customer is found
       if (extractedData.customer && extractedData.customer_detail) {
@@ -420,8 +450,9 @@ export default function Dashboard() {
 
       // Create sales order details for each line item
       const detailPromises = formData.lineItems.map((item) => {
-        if (!item.ProductID) {
-          throw new Error("ProductID is required for all line items")
+        const productId = item.product?.ProductID || item.ProductID
+        if (!productId) {
+          throw new Error("Product is required for all line items")
         }
         return fetch("http://localhost:5000/sales_order_details", {
           method: "POST",
@@ -431,7 +462,7 @@ export default function Dashboard() {
           body: JSON.stringify({
             ...item,
             SalesOrderID: createdOrder.SalesOrderID,
-            ProductID: item.ProductID,
+            ProductID: productId,
           }),
         })
       })
@@ -546,6 +577,108 @@ export default function Dashboard() {
     } else {
       return customer.customer_detail.Name || `Customer ${customer.CustomerID}`
     }
+  }
+
+  const searchProducts = async (query: string, lineItemIndex: number) => {
+    if (!query.trim()) {
+      setProductSearchResults((prev) => {
+        const newMap = new Map(prev)
+        newMap.set(lineItemIndex, [])
+        return newMap
+      })
+      return
+    }
+
+    try {
+      setProductSearchLoading((prev) => {
+        const newMap = new Map(prev)
+        newMap.set(lineItemIndex, true)
+        return newMap
+      })
+      const response = await fetch(
+        `http://localhost:5000/products/search?q=${encodeURIComponent(query)}&limit=20`
+      )
+      if (!response.ok) {
+        throw new Error("Failed to search products")
+      }
+      const results = await response.json()
+      setProductSearchResults((prev) => {
+        const newMap = new Map(prev)
+        newMap.set(lineItemIndex, results)
+        return newMap
+      })
+    } catch (err) {
+      console.error("Error searching products:", err)
+      setProductSearchResults((prev) => {
+        const newMap = new Map(prev)
+        newMap.set(lineItemIndex, [])
+        return newMap
+      })
+    } finally {
+      setProductSearchLoading((prev) => {
+        const newMap = new Map(prev)
+        newMap.set(lineItemIndex, false)
+        return newMap
+      })
+    }
+  }
+
+  const handleProductSearchChange = (value: string, lineItemIndex: number) => {
+    setProductSearchQueries((prev) => {
+      const newMap = new Map(prev)
+      newMap.set(lineItemIndex, value)
+      return newMap
+    })
+    setShowProductDropdowns((prev) => {
+      const newMap = new Map(prev)
+      newMap.set(lineItemIndex, true)
+      return newMap
+    })
+
+    // Clear existing timeout
+    const existingTimeout = productSearchTimeoutRefs.current.get(lineItemIndex)
+    if (existingTimeout) {
+      clearTimeout(existingTimeout)
+    }
+
+    // Debounce search
+    const timeout = setTimeout(() => {
+      searchProducts(value, lineItemIndex)
+    }, 300)
+    productSearchTimeoutRefs.current.set(lineItemIndex, timeout)
+  }
+
+  const selectProduct = (product: Product, lineItemIndex: number) => {
+    if (!formData) return
+    const updatedItems = [...formData.lineItems]
+    updatedItems[lineItemIndex] = {
+      ...updatedItems[lineItemIndex],
+      ProductID: product.ProductID,
+      product: product,
+    }
+    setFormData({
+      ...formData,
+      lineItems: updatedItems,
+    })
+    setProductSearchQueries((prev) => {
+      const newMap = new Map(prev)
+      newMap.set(lineItemIndex, product.Name || product.ProductNumber || "")
+      return newMap
+    })
+    setShowProductDropdowns((prev) => {
+      const newMap = new Map(prev)
+      newMap.set(lineItemIndex, false)
+      return newMap
+    })
+    setProductSearchResults((prev) => {
+      const newMap = new Map(prev)
+      newMap.set(lineItemIndex, [])
+      return newMap
+    })
+  }
+
+  const getProductDisplayName = (product: Product) => {
+    return product.Name || product.ProductNumber || `Product ${product.ProductID}`
   }
 
   if (loading) {
@@ -965,19 +1098,103 @@ export default function Dashboard() {
                 {formData.lineItems.map((item, index) => (
                   <div key={index} className="border rounded-lg p-4 space-y-3">
                     <h4 className="font-medium">Item {index + 1}</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium">Product ID *</label>
-                        <input
-                          type="number"
-                          required
-                          value={item.ProductID || ""}
-                          onChange={(e) =>
-                            updateLineItem(index, "ProductID", e.target.value ? parseInt(e.target.value) : null)
-                          }
-                          className="w-full mt-1 px-3 py-2 border rounded-md"
-                        />
+
+                    {/* Product Selection */}
+                    <div className="space-y-2 product-search-container">
+                      <label className="text-sm font-medium">Product *</label>
+                      <div className="relative">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <input
+                            type="text"
+                            required
+                            placeholder="Search by product name, number, or ID..."
+                            value={productSearchQueries.get(index) || ""}
+                            onChange={(e) => handleProductSearchChange(e.target.value, index)}
+                            onFocus={() => {
+                              const query = productSearchQueries.get(index)
+                              if (query && productSearchResults.get(index)?.length) {
+                                setShowProductDropdowns((prev) => {
+                                  const newMap = new Map(prev)
+                                  newMap.set(index, true)
+                                  return newMap
+                                })
+                              }
+                            }}
+                            className="w-full pl-10 pr-3 py-2 border rounded-md"
+                          />
+                          {productSearchLoading.get(index) && (
+                            <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                          )}
+                        </div>
+                        {showProductDropdowns.get(index) && productSearchResults.get(index) && productSearchResults.get(index)!.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                            {productSearchResults.get(index)!.map((product) => (
+                              <button
+                                key={product.ProductID}
+                                type="button"
+                                onClick={() => selectProduct(product, index)}
+                                className="w-full text-left px-4 py-2 hover:bg-muted focus:bg-muted focus:outline-none"
+                              >
+                                <div className="font-medium">{getProductDisplayName(product)}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  ID: {product.ProductID} | Number: {product.ProductNumber || "N/A"}
+                                  {product.Color && ` | Color: ${product.Color}`}
+                                  {product.Size && ` | Size: ${product.Size}`}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
+                      {item.product && (
+                        <div className="border rounded-lg p-4 bg-muted/50">
+                          <div className="space-y-2">
+                            <div>
+                              <p className="text-sm font-medium">Product Name</p>
+                              <p className="text-sm">{item.product.Name || "N/A"}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <p className="text-muted-foreground">Product ID</p>
+                                <p className="font-semibold">{item.product.ProductID}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Product Number</p>
+                                <p className="font-semibold">{item.product.ProductNumber || "N/A"}</p>
+                              </div>
+                              {item.product.Color && (
+                                <div>
+                                  <p className="text-muted-foreground">Color</p>
+                                  <p className="font-semibold">{item.product.Color}</p>
+                                </div>
+                              )}
+                              {item.product.Size && (
+                                <div>
+                                  <p className="text-muted-foreground">Size</p>
+                                  <p className="font-semibold">{item.product.Size}</p>
+                                </div>
+                              )}
+                              {item.product.ListPrice !== null && (
+                                <div>
+                                  <p className="text-muted-foreground">List Price</p>
+                                  <p className="font-semibold">{formatCurrency(item.product.ListPrice)}</p>
+                                </div>
+                              )}
+                              {item.product.StandardCost !== null && (
+                                <div>
+                                  <p className="text-muted-foreground">Standard Cost</p>
+                                  <p className="font-semibold">{formatCurrency(item.product.StandardCost)}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Other Line Item Fields */}
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-sm font-medium">Order Quantity</label>
                         <input
