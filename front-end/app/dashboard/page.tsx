@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ChevronDown, Loader2 } from "lucide-react"
+import { ChevronDown, Loader2, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -166,10 +166,43 @@ export default function Dashboard() {
   } | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [customerSearchQuery, setCustomerSearchQuery] = useState("")
+  const [customerSearchResults, setCustomerSearchResults] = useState<
+    (Customer & { customer_detail: IndividualCustomer | StoreCustomer })[]
+  >([])
+  const [customerSearchLoading, setCustomerSearchLoading] = useState(false)
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
+  const customerSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     fetchSalesOrders()
   }, [])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (customerSearchTimeoutRef.current) {
+        clearTimeout(customerSearchTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest(".customer-search-container")) {
+        setShowCustomerDropdown(false)
+      }
+    }
+
+    if (showCustomerDropdown) {
+      document.addEventListener("mousedown", handleClickOutside)
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside)
+      }
+    }
+  }, [showCustomerDropdown])
 
   const fetchSalesOrders = async () => {
     try {
@@ -320,6 +353,23 @@ export default function Dashboard() {
         customer: extractedData.customer || null,
         customerDetail: extractedData.customer_detail || null,
       })
+
+      // Initialize customer search query if customer is found
+      if (extractedData.customer && extractedData.customer_detail) {
+        if ("FirstName" in extractedData.customer_detail) {
+          const name = [
+            extractedData.customer_detail.FirstName,
+            extractedData.customer_detail.MiddleName,
+            extractedData.customer_detail.LastName,
+          ]
+            .filter(Boolean)
+            .join(" ")
+          setCustomerSearchQuery(name)
+        } else {
+          setCustomerSearchQuery(extractedData.customer_detail.Name || `Customer ${extractedData.customer.CustomerID}`)
+        }
+      }
+
       setSheetOpen(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred during upload")
@@ -425,6 +475,77 @@ export default function Dashboard() {
       ...formData,
       lineItems: updatedItems,
     })
+  }
+
+  const searchCustomers = async (query: string) => {
+    if (!query.trim()) {
+      setCustomerSearchResults([])
+      return
+    }
+
+    try {
+      setCustomerSearchLoading(true)
+      const response = await fetch(
+        `http://localhost:5000/customers/search?q=${encodeURIComponent(query)}&limit=20`
+      )
+      if (!response.ok) {
+        throw new Error("Failed to search customers")
+      }
+      const results = await response.json()
+      setCustomerSearchResults(results)
+    } catch (err) {
+      console.error("Error searching customers:", err)
+      setCustomerSearchResults([])
+    } finally {
+      setCustomerSearchLoading(false)
+    }
+  }
+
+  const handleCustomerSearchChange = (value: string) => {
+    setCustomerSearchQuery(value)
+    setShowCustomerDropdown(true)
+
+    // Clear existing timeout
+    if (customerSearchTimeoutRef.current) {
+      clearTimeout(customerSearchTimeoutRef.current)
+    }
+
+    // Debounce search
+    customerSearchTimeoutRef.current = setTimeout(() => {
+      searchCustomers(value)
+    }, 300)
+  }
+
+  const selectCustomer = (customer: Customer & { customer_detail: IndividualCustomer | StoreCustomer }) => {
+    if (!formData) return
+    setFormData({
+      ...formData,
+      customer: {
+        CustomerID: customer.CustomerID,
+        PersonID: customer.PersonID,
+        StoreID: customer.StoreID,
+        TerritoryID: customer.TerritoryID,
+        AccountNumber: customer.AccountNumber,
+      },
+      customerDetail: customer.customer_detail,
+    })
+    setCustomerSearchQuery("")
+    setShowCustomerDropdown(false)
+    setCustomerSearchResults([])
+  }
+
+  const getCustomerDisplayName = (customer: Customer & { customer_detail: IndividualCustomer | StoreCustomer }) => {
+    if ("FirstName" in customer.customer_detail) {
+      return [
+        customer.customer_detail.FirstName,
+        customer.customer_detail.MiddleName,
+        customer.customer_detail.LastName,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    } else {
+      return customer.customer_detail.Name || `Customer ${customer.CustomerID}`
+    }
   }
 
   if (loading) {
@@ -656,11 +777,49 @@ export default function Dashboard() {
 
           {formData && (
             <form onSubmit={handleFormSubmit} className="mt-6 space-y-6 px-4">
-              {/* Customer Information */}
-              {formData.customer && (
-                <div className="space-y-4 border rounded-lg p-4 bg-muted/50">
-                  <h3 className="text-lg font-semibold">Customer Information</h3>
-                  {formData.customerDetail && (
+              {/* Customer Selection */}
+              <div className="space-y-4 customer-search-container">
+                <h3 className="text-lg font-semibold">Customer *</h3>
+                <div className="relative">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Search by customer name or ID..."
+                      value={customerSearchQuery}
+                      onChange={(e) => handleCustomerSearchChange(e.target.value)}
+                      onFocus={() => {
+                        if (customerSearchQuery && customerSearchResults.length > 0) {
+                          setShowCustomerDropdown(true)
+                        }
+                      }}
+                      className="w-full pl-10 pr-3 py-2 border rounded-md"
+                    />
+                    {customerSearchLoading && (
+                      <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                  {showCustomerDropdown && customerSearchResults.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                      {customerSearchResults.map((customer) => (
+                        <button
+                          key={customer.CustomerID}
+                          type="button"
+                          onClick={() => selectCustomer(customer)}
+                          className="w-full text-left px-4 py-2 hover:bg-muted focus:bg-muted focus:outline-none"
+                        >
+                          <div className="font-medium">{getCustomerDisplayName(customer)}</div>
+                          <div className="text-sm text-muted-foreground">
+                            ID: {customer.CustomerID} | Territory: {customer.TerritoryID}
+                            {customer.customer_detail.City && ` | ${customer.customer_detail.City}`}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {formData.customer && formData.customerDetail && (
+                  <div className="border rounded-lg p-4 bg-muted/50">
                     <div className="space-y-2">
                       {"FirstName" in formData.customerDetail ? (
                         // Individual Customer
@@ -699,27 +858,20 @@ export default function Dashboard() {
                           </p>
                         </div>
                       )}
-                    </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Customer ID</p>
-                      <p className="font-semibold">{formData.customer.CustomerID}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Territory ID</p>
-                      <p className="font-semibold">{formData.customer.TerritoryID}</p>
+                      <div className="grid grid-cols-2 gap-4 text-sm pt-2">
+                        <div>
+                          <p className="text-muted-foreground">Customer ID</p>
+                          <p className="font-semibold">{formData.customer.CustomerID}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Territory ID</p>
+                          <p className="font-semibold">{formData.customer.TerritoryID}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-              {!formData.customer && (
-                <div className="border rounded-lg p-4 bg-destructive/10">
-                  <p className="text-sm text-destructive">
-                    No customer match found. Please ensure the customer exists in the database.
-                  </p>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Header Fields */}
               <div className="space-y-4">

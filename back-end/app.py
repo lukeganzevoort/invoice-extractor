@@ -9,8 +9,15 @@ from db import get_db_session
 from document_processor import ALLOWED_EXTENSIONS, ALLOWED_MIME_TYPES, MAX_FILE_SIZE
 from flask import Flask, abort, jsonify, request
 from flask_cors import CORS
-from models import SalesOrderDetail, SalesOrderHeader
+from models import (
+    Customer,
+    IndividualCustomer,
+    SalesOrderDetail,
+    SalesOrderHeader,
+    StoreCustomer,
+)
 from openai_full_data_extraction import extract_invoice_data_from_document
+from sqlalchemy import or_
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -850,6 +857,183 @@ def delete_sales_order_detail(detail_id):
         # Response will be committed by the context manager
 
         return "", 204
+
+
+@app.route("/customers/search", methods=["GET"])
+def search_customers():
+    """
+    Search for customers by name or ID.
+
+    Query Parameters:
+        q (str): Search query (searches by customer ID, individual customer name, or store name)
+        limit (int): Maximum number of results (default: 20, maximum: 100)
+
+    Returns:
+        JSON array of customer objects with customer_detail information.
+        Each customer object includes CustomerID, TerritoryID, and customer_detail.
+    """
+    query = request.args.get("q", "").strip()
+    limit = min(int(request.args.get("limit", 20)), 100)
+
+    if not query:
+        return jsonify([]), 200
+
+    results = []
+
+    with get_db_session() as session:
+        # Try to match by CustomerID if query is numeric
+        if query.isdigit():
+            customer_id = int(query)
+            customer = (
+                session.query(Customer)
+                .filter(Customer.CustomerID == customer_id)
+                .first()
+            )
+            if customer:
+                # Get customer detail
+                customer_detail = None
+                if customer.PersonID:
+                    customer_detail = (
+                        session.query(IndividualCustomer)
+                        .filter(
+                            IndividualCustomer.BusinessEntityID == customer.PersonID
+                        )
+                        .first()
+                    )
+                elif customer.StoreID:
+                    customer_detail = (
+                        session.query(StoreCustomer)
+                        .filter(StoreCustomer.BusinessEntityID == customer.StoreID)
+                        .first()
+                    )
+
+                if customer_detail:
+                    customer_dict = {
+                        "CustomerID": customer.CustomerID,
+                        "PersonID": customer.PersonID,
+                        "StoreID": customer.StoreID,
+                        "TerritoryID": customer.TerritoryID,
+                        "AccountNumber": customer.AccountNumber,
+                    }
+
+                    if isinstance(customer_detail, IndividualCustomer):
+                        customer_dict["customer_detail"] = {
+                            "BusinessEntityID": customer_detail.BusinessEntityID,
+                            "FirstName": customer_detail.FirstName,
+                            "MiddleName": customer_detail.MiddleName,
+                            "LastName": customer_detail.LastName,
+                            "AddressType": customer_detail.AddressType,
+                            "AddressLine1": customer_detail.AddressLine1,
+                            "AddressLine2": customer_detail.AddressLine2,
+                            "City": customer_detail.City,
+                            "StateProvinceName": customer_detail.StateProvinceName,
+                            "PostalCode": customer_detail.PostalCode,
+                            "CountryRegionName": customer_detail.CountryRegionName,
+                        }
+                    else:  # StoreCustomer
+                        customer_dict["customer_detail"] = {
+                            "BusinessEntityID": customer_detail.BusinessEntityID,
+                            "Name": customer_detail.Name,
+                            "AddressType": customer_detail.AddressType,
+                            "AddressLine1": customer_detail.AddressLine1,
+                            "AddressLine2": customer_detail.AddressLine2,
+                            "City": customer_detail.City,
+                            "StateProvinceName": customer_detail.StateProvinceName,
+                            "PostalCode": customer_detail.PostalCode,
+                            "CountryRegionName": customer_detail.CountryRegionName,
+                        }
+
+                    results.append(customer_dict)
+
+        # Search individual customers by name
+        name_parts = query.split()
+        if len(name_parts) >= 1:
+            search_term = f"%{query}%"
+            # Search by first name, last name, or both
+            individuals = (
+                session.query(IndividualCustomer)
+                .filter(
+                    or_(
+                        IndividualCustomer.FirstName.ilike(search_term),
+                        IndividualCustomer.LastName.ilike(search_term),
+                    )
+                )
+                .limit(limit)
+                .all()
+            )
+
+            for individual in individuals:
+                customer = (
+                    session.query(Customer)
+                    .filter(Customer.PersonID == individual.BusinessEntityID)
+                    .first()
+                )
+                if customer and not any(
+                    r["CustomerID"] == customer.CustomerID for r in results
+                ):
+                    customer_dict = {
+                        "CustomerID": customer.CustomerID,
+                        "PersonID": customer.PersonID,
+                        "StoreID": customer.StoreID,
+                        "TerritoryID": customer.TerritoryID,
+                        "AccountNumber": customer.AccountNumber,
+                        "customer_detail": {
+                            "BusinessEntityID": individual.BusinessEntityID,
+                            "FirstName": individual.FirstName,
+                            "MiddleName": individual.MiddleName,
+                            "LastName": individual.LastName,
+                            "AddressType": individual.AddressType,
+                            "AddressLine1": individual.AddressLine1,
+                            "AddressLine2": individual.AddressLine2,
+                            "City": individual.City,
+                            "StateProvinceName": individual.StateProvinceName,
+                            "PostalCode": individual.PostalCode,
+                            "CountryRegionName": individual.CountryRegionName,
+                        },
+                    }
+                    results.append(customer_dict)
+
+        # Search store customers by name
+        stores = (
+            session.query(StoreCustomer)
+            .filter(StoreCustomer.Name.ilike(f"%{query}%"))
+            .limit(limit)
+            .all()
+        )
+
+        for store in stores:
+            customer = (
+                session.query(Customer)
+                .filter(Customer.StoreID == store.BusinessEntityID)
+                .first()
+            )
+            if customer and not any(
+                r["CustomerID"] == customer.CustomerID for r in results
+            ):
+                customer_dict = {
+                    "CustomerID": customer.CustomerID,
+                    "PersonID": customer.PersonID,
+                    "StoreID": customer.StoreID,
+                    "TerritoryID": customer.TerritoryID,
+                    "AccountNumber": customer.AccountNumber,
+                    "customer_detail": {
+                        "BusinessEntityID": store.BusinessEntityID,
+                        "Name": store.Name,
+                        "AddressType": store.AddressType,
+                        "AddressLine1": store.AddressLine1,
+                        "AddressLine2": store.AddressLine2,
+                        "City": store.City,
+                        "StateProvinceName": store.StateProvinceName,
+                        "PostalCode": store.PostalCode,
+                        "CountryRegionName": store.CountryRegionName,
+                    },
+                }
+                results.append(customer_dict)
+
+    # Limit results
+    results = results[:limit]
+
+    return jsonify(results), 200
 
 
 if __name__ == "__main__":
