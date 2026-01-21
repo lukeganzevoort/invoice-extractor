@@ -18,7 +18,7 @@ from models import (
     StoreCustomer,
 )
 from openai_full_data_extraction import extract_invoice_data_from_document
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -289,9 +289,14 @@ def create_sales_order():
         # Create new order
         order = SalesOrderHeader()
 
-        # Set all provided fields
+        # Set SalesOrderID - auto-generate if not provided
         if "SalesOrderID" in data:
             order.SalesOrderID = data["SalesOrderID"]
+        else:
+            # Auto-generate ID by finding the maximum existing ID and adding 1
+            max_id = session.query(func.max(SalesOrderHeader.SalesOrderID)).scalar()
+            order.SalesOrderID = (max_id + 1) if max_id is not None else 1
+
         order.CustomerID = data["CustomerID"]
         order.TerritoryID = data["TerritoryID"]
 
@@ -672,9 +677,13 @@ def create_sales_order_detail():
         detail.SalesOrderID = data["SalesOrderID"]
         detail.ProductID = data["ProductID"]
 
-        # Set SalesOrderDetailID if provided
+        # Set SalesOrderDetailID - auto-generate if not provided
         if "SalesOrderDetailID" in data:
             detail.SalesOrderDetailID = data["SalesOrderDetailID"]
+        else:
+            # Auto-generate ID by finding the maximum existing ID and adding 1
+            max_id = session.query(func.max(SalesOrderDetail.SalesOrderDetailID)).scalar()
+            detail.SalesOrderDetailID = (max_id + 1) if max_id is not None else 1
 
         # Handle optional fields
         optional_fields = [
