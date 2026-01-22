@@ -203,18 +203,18 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
 
     return (
       <>
-        <div className="rounded-md border">
+        <div className="overflow-hidden p-4">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/50 border-b">
                 <TableHead className="w-12"></TableHead>
-                <TableHead>Order ID ↓</TableHead>
-                <TableHead>Order Number</TableHead>
-                <TableHead>Order Date</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Customer ID</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Total Due</TableHead>
+                <TableHead className="font-semibold">Order ID ↓</TableHead>
+                <TableHead className="font-semibold">Order Number</TableHead>
+                <TableHead className="font-semibold">Order Date</TableHead>
+                <TableHead className="font-semibold">Due Date</TableHead>
+                <TableHead className="font-semibold">Customer ID</TableHead>
+                <TableHead className="font-semibold">Status</TableHead>
+                <TableHead className="text-right font-semibold">Total Due</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -232,7 +232,7 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
 
                   return (
                     <Fragment key={order.SalesOrderID}>
-                      <TableRow>
+                      <TableRow className={`border-b hover:bg-muted/30 transition-colors ${isExpanded ? "bg-muted/20" : ""}`}>
                         <TableCell>
                           <Button
                             variant="ghost"
@@ -241,8 +241,7 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
                             onClick={() => toggleOrder(order.SalesOrderID)}
                           >
                             <ChevronDown
-                              className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""
-                                }`}
+                              className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
                             />
                           </Button>
                         </TableCell>
@@ -252,17 +251,17 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
                         <TableCell>{formatDate(order.DueDate)}</TableCell>
                         <TableCell>{order.CustomerID}</TableCell>
                         <TableCell>{order.Status ?? "N/A"}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right font-semibold text-primary">
                           {formatCurrency(order.TotalDue)}
                         </TableCell>
                       </TableRow>
                       {isExpanded && (
                         <TableRow>
-                          <TableCell colSpan={8} className="bg-muted/50 p-0">
-                            <div className="p-6 space-y-6">
+                          <TableCell colSpan={8} className="bg-muted/30 p-0">
+                            <div className="p-6 space-y-8">
                               {/* Customer Information */}
                               <div>
-                                <h3 className="font-semibold mb-4">Customer Information</h3>
+                                <h3 className="font-semibold mb-4 text-foreground">Customer Information</h3>
                                 {customer ? (
                                   <div className="border rounded-lg p-4 bg-background">
                                     <div className="space-y-2">
@@ -305,16 +304,16 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
                                       )}
                                       <div className="grid grid-cols-2 gap-4 text-sm pt-2">
                                         <div>
-                                          <p className="text-muted-foreground">Customer ID</p>
+                                          <p className="text-muted-foreground text-xs">Customer ID</p>
                                           <p className="font-semibold">{customer.CustomerID}</p>
                                         </div>
                                         <div>
-                                          <p className="text-muted-foreground">Territory ID</p>
+                                          <p className="text-muted-foreground text-xs">Territory ID</p>
                                           <p className="font-semibold">{customer.TerritoryID}</p>
                                         </div>
                                         {customer.AccountNumber && (
                                           <div>
-                                            <p className="text-muted-foreground">Account Number</p>
+                                            <p className="text-muted-foreground text-xs">Account Number</p>
                                             <p className="font-semibold">{customer.AccountNumber}</p>
                                           </div>
                                         )}
@@ -328,25 +327,25 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
 
                               {/* Order Details */}
                               <div>
-                                <h3 className="font-semibold mb-4">Order Details</h3>
+                                <h3 className="font-semibold mb-4 text-foreground">Order Details</h3>
                                 {details.length === 0 ? (
                                   <p className="text-muted-foreground">Loading order details...</p>
                                 ) : (
                                   <>
-                                    <div className="rounded-md border">
+                                    <div className="border rounded-lg overflow-hidden">
                                       <Table>
                                         <TableHeader>
-                                          <TableRow>
-                                            <TableHead>Product</TableHead>
-                                            <TableHead>Quantity</TableHead>
-                                            <TableHead>Unit Price</TableHead>
-                                            <TableHead>Discount</TableHead>
-                                            <TableHead className="text-right">Line Total</TableHead>
+                                          <TableRow className="bg-muted/50 border-b">
+                                            <TableHead className="font-semibold">Product</TableHead>
+                                            <TableHead className="font-semibold">Quantity</TableHead>
+                                            <TableHead className="font-semibold">Unit Price</TableHead>
+                                            <TableHead className="font-semibold">Discount</TableHead>
+                                            <TableHead className="text-right font-semibold">Line Total</TableHead>
                                           </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                           {details.map((detail) => (
-                                            <TableRow key={detail.SalesOrderDetailID}>
+                                            <TableRow key={detail.SalesOrderDetailID} className="border-b">
                                               <TableCell>
                                                 {detail.Product?.Name ||
                                                   `Product ID: ${detail.ProductID}`}
@@ -363,7 +362,7 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
                                                   ? `${(detail.UnitPriceDiscount * 100).toFixed(2)}%`
                                                   : "N/A"}
                                               </TableCell>
-                                              <TableCell className="text-right">
+                                              <TableCell className="text-right font-medium">
                                                 {formatCurrency(detail.LineTotal)}
                                               </TableCell>
                                             </TableRow>
@@ -371,24 +370,26 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
                                         </TableBody>
                                       </Table>
                                     </div>
-                                    <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
-                                      <div>
-                                        <p className="text-muted-foreground">Subtotal:</p>
-                                        <p className="font-semibold">{formatCurrency(order.SubTotal)}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Tax Amount:</p>
-                                        <p className="font-semibold">{formatCurrency(order.TaxAmt)}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Freight:</p>
-                                        <p className="font-semibold">{formatCurrency(order.Freight)}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Total Due:</p>
-                                        <p className="font-semibold text-lg">
-                                          {formatCurrency(order.TotalDue)}
-                                        </p>
+                                    <div className="mt-6 pt-4 border-t">
+                                      <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                          <p className="text-muted-foreground text-xs">Subtotal</p>
+                                          <p className="font-semibold">{formatCurrency(order.SubTotal)}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-muted-foreground text-xs">Tax Amount</p>
+                                          <p className="font-semibold">{formatCurrency(order.TaxAmt)}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-muted-foreground text-xs">Freight</p>
+                                          <p className="font-semibold">{formatCurrency(order.Freight)}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-muted-foreground text-xs">Total Due</p>
+                                          <p className="font-semibold text-lg text-primary">
+                                            {formatCurrency(order.TotalDue)}
+                                          </p>
+                                        </div>
                                       </div>
                                     </div>
                                   </>
@@ -406,7 +407,7 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
           </Table>
         </div>
         {hasNextPage && (
-          <div className="flex justify-center mt-4">
+          <div className="flex justify-center mt-6 pb-4">
             <Button onClick={loadMore} disabled={loadingMore} variant="outline">
               {loadingMore ? "Loading..." : "Load More"}
             </Button>

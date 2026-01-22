@@ -148,47 +148,55 @@ export default function Dashboard() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
+        <div className="text-center bg-card rounded-lg shadow-md border p-8">
           <p className="text-lg text-destructive mb-4">Error: {error}</p>
-          <Button onClick={() => tableRef.current?.refresh()}>Retry</Button>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-4">
-          <Link href="/">
-            <Button variant="ghost" size="icon" className="h-9 w-9">
-              <Home className="h-5 w-5" />
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold">Sales Orders Dashboard</h1>
-        </div>
-        <div className="relative">
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept=".pdf,.png,.jpg,.jpeg"
-            onChange={handleFileChange}
-            disabled={uploading}
-          />
-          <Button onClick={handleUploadClick} disabled={uploading}>
-            {uploading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Uploading...
-              </>
-            ) : (
-              "Upload"
-            )}
-          </Button>
+    <>
+      <div className="min-h-screen">
+        <div className="container mx-auto py-8 px-4">
+          <div className="flex justify-between items-center mb-8">
+            <div className="flex items-center gap-3">
+              <Link href="/">
+                <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <Home className="h-5 w-5" />
+                </Button>
+              </Link>
+              <h1 className="text-3xl font-bold text-foreground">
+                Sales Orders Dashboard
+              </h1>
+            </div>
+            <div className="relative">
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf,.png,.jpg,.jpeg"
+                onChange={handleFileChange}
+                disabled={uploading}
+              />
+              <Button onClick={handleUploadClick} disabled={uploading}>
+                {uploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  "Upload"
+                )}
+              </Button>
+            </div>
+          </div>
+          <div className="bg-card rounded-lg shadow-sm border">
+            <SalesOrderTable ref={tableRef} onError={setError} />
+          </div>
         </div>
       </div>
-      <SalesOrderTable ref={tableRef} onError={setError} />
 
       <SalesOrderFormSheet
         open={sheetOpen}
@@ -200,6 +208,6 @@ export default function Dashboard() {
         error={error}
         onError={setError}
       />
-    </div>
+    </>
   )
 }
