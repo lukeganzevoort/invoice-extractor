@@ -11,6 +11,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { API_ENDPOINTS } from "@/lib/api"
 
 interface ExtractedHeader {
   SalesOrderNumber: string | null
@@ -237,9 +238,7 @@ export function SalesOrderFormSheet({
 
     try {
       setCustomerSearchLoading(true)
-      const response = await fetch(
-        `http://localhost:5000/customers/search?q=${encodeURIComponent(query)}&limit=20`
-      )
+      const response = await fetch(API_ENDPOINTS.CUSTOMERS_SEARCH(query))
       if (!response.ok) {
         throw new Error("Failed to search customers")
       }
@@ -319,9 +318,7 @@ export function SalesOrderFormSheet({
         newMap.set(lineItemIndex, true)
         return newMap
       })
-      const response = await fetch(
-        `http://localhost:5000/products/search?q=${encodeURIComponent(query)}&limit=20`
-      )
+      const response = await fetch(API_ENDPOINTS.PRODUCTS_SEARCH(query))
       if (!response.ok) {
         throw new Error("Failed to search products")
       }

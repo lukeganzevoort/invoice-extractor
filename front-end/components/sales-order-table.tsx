@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table"
 import { ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { API_ENDPOINTS } from "@/lib/api"
 
 interface SalesOrderHeader {
   SalesOrderID: number
@@ -94,7 +95,7 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
           order: "desc",
         })
         const response = await fetch(
-          `http://localhost:5000/sales_orders?${params.toString()}`
+          `${API_ENDPOINTS.SALES_ORDERS}?${params.toString()}`
         )
         if (!response.ok) {
           throw new Error("Failed to fetch sales orders")
@@ -129,7 +130,7 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
           order: "asc",
         })
         const response = await fetch(
-          `http://localhost:5000/sales_orders?${params.toString()}`
+          `${API_ENDPOINTS.SALES_ORDERS}?${params.toString()}`
         )
         if (!response.ok) {
           throw new Error("Failed to fetch more sales orders")
@@ -158,7 +159,7 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
       }
 
       try {
-        const response = await fetch(`http://localhost:5000/sales_orders/${orderId}`)
+        const response = await fetch(API_ENDPOINTS.SALES_ORDER_BY_ID(orderId))
         if (!response.ok) {
           throw new Error("Failed to fetch order details")
         }

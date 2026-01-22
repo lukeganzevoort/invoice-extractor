@@ -6,6 +6,7 @@ import { Loader2, Home } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SalesOrderFormSheet } from "@/components/sales-order-form-sheet"
 import { SalesOrderTable, SalesOrderTableRef } from "@/components/sales-order-table"
+import { API_ENDPOINTS } from "@/lib/api"
 
 
 interface ExtractedHeader {
@@ -151,7 +152,7 @@ export default function Dashboard() {
       const formData = new FormData()
       formData.append("file", file)
 
-      const response = await fetch("http://localhost:5000/upload", {
+      const response = await fetch(API_ENDPOINTS.UPLOAD, {
         method: "POST",
         body: formData,
       })
@@ -211,7 +212,7 @@ export default function Dashboard() {
       }
 
       // Create the sales order header
-      const headerResponse = await fetch("http://localhost:5000/sales_orders", {
+      const headerResponse = await fetch(API_ENDPOINTS.SALES_ORDERS, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -232,7 +233,7 @@ export default function Dashboard() {
         if (!productId) {
           throw new Error("Product is required for all line items")
         }
-        return fetch("http://localhost:5000/sales_order_details", {
+        return fetch(API_ENDPOINTS.SALES_ORDER_DETAILS, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
