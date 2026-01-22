@@ -384,18 +384,13 @@ export function SalesOrderFormSheet({
     e.preventDefault()
     if (!formData) return
 
-    if (!formData.customer) {
-      if (onError) {
-        onError("Customer information is required")
-      }
-      return
-    }
-
     try {
       if (onError) {
         onError(null)
       }
       await onSubmit(formData)
+      // Close the sheet after successful submission
+      onOpenChange(false)
     } catch (err) {
       if (onError) {
         onError(err instanceof Error ? err.message : "An error occurred during submission")
@@ -427,6 +422,7 @@ export function SalesOrderFormSheet({
                 <input
                   type="text"
                   placeholder="Search by customer name or ID..."
+                  required
                   value={customerSearchQuery}
                   onChange={(e) => handleCustomerSearchChange(e.target.value)}
                   onFocus={() => {
@@ -771,7 +767,6 @@ export function SalesOrderFormSheet({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
               disabled={submitting}
             >
               Cancel
