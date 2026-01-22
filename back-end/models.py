@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional
 
 from db import Base
-from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -130,7 +130,10 @@ class IndividualCustomer(Base):
 
     __tablename__ = "IndividualCustomers"
 
-    BusinessEntityID: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[Optional[int]] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
+    BusinessEntityID: Mapped[Optional[int]] = mapped_column(BigInteger)
     FirstName: Mapped[Optional[str]] = mapped_column(Text)
     MiddleName: Mapped[Optional[str]] = mapped_column(Text)
     LastName: Mapped[Optional[str]] = mapped_column(Text)
@@ -155,7 +158,10 @@ class StoreCustomer(Base):
 
     __tablename__ = "StoreCustomers"
 
-    BusinessEntityID: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[Optional[int]] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
+    BusinessEntityID: Mapped[Optional[int]] = mapped_column(BigInteger)
     Name: Mapped[Optional[str]] = mapped_column(Text)
     AddressType: Mapped[Optional[str]] = mapped_column(Text)
     AddressLine1: Mapped[Optional[str]] = mapped_column(Text)
@@ -178,7 +184,9 @@ class SalesOrderHeader(Base):
 
     __tablename__ = "SalesOrderHeader"
 
-    SalesOrderID: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    SalesOrderID: Mapped[Optional[int]] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
     RevisionNumber: Mapped[Optional[int]] = mapped_column(BigInteger)
     OrderDate: Mapped[Optional[datetime]] = mapped_column(DateTime)
     DueDate: Mapped[Optional[datetime]] = mapped_column(DateTime)
@@ -226,7 +234,9 @@ class SalesOrderDetail(Base):
     SalesOrderID: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("SalesOrderHeader.SalesOrderID")
     )
-    SalesOrderDetailID: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    SalesOrderDetailID: Mapped[Optional[int]] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
     CarrierTrackingNumber: Mapped[Optional[str]] = mapped_column(Text)
     OrderQty: Mapped[Optional[int]] = mapped_column(BigInteger)
     ProductID: Mapped[int] = mapped_column(BigInteger, ForeignKey("Product.ProductID"))

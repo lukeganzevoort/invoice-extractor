@@ -18,7 +18,8 @@ from models import (
     StoreCustomer,
 )
 from openai_full_data_extraction import extract_invoice_data_from_document
-from sqlalchemy import func, or_
+from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -212,6 +213,7 @@ def get_sales_orders():
         orders = (
             session.query(SalesOrderHeader)
             .order_by(sort_column)
+            .order_by(SalesOrderHeader.SalesOrderID.desc())
             .offset(offset)
             .limit(per_page)
             .all()
@@ -278,6 +280,7 @@ def create_sales_order():
         abort(400, description="Request body must be JSON")
 
     data = request.get_json()
+    print("data", data)
 
     # Validate required fields
     if "CustomerID" not in data:
@@ -289,13 +292,9 @@ def create_sales_order():
         # Create new order
         order = SalesOrderHeader()
 
-        # Set SalesOrderID - auto-generate if not provided
+        # Set SalesOrderID only if explicitly provided (otherwise SQLite auto-assigns)
         if "SalesOrderID" in data:
             order.SalesOrderID = data["SalesOrderID"]
-        else:
-            # Auto-generate ID by finding the maximum existing ID and adding 1
-            max_id = session.query(func.max(SalesOrderHeader.SalesOrderID)).scalar()
-            order.SalesOrderID = (max_id + 1) if max_id is not None else 1
 
         order.CustomerID = data["CustomerID"]
         order.TerritoryID = data["TerritoryID"]
@@ -346,7 +345,7 @@ def create_sales_order():
                 setattr(order, field, value)
 
         session.add(order)
-        session.flush()  # Flush to get the generated ID
+        session.flush()  # Flush to get the auto-generated ID
 
         # Build response with created order data
         order_data = {
@@ -394,6 +393,7 @@ def get_sales_order(order_id):
 
         order = (
             session.query(SalesOrderHeader)
+            .options(joinedload(SalesOrderHeader.order_details))
             .filter(SalesOrderHeader.SalesOrderID == order_id)
             .first()
         )
@@ -677,13 +677,9 @@ def create_sales_order_detail():
         detail.SalesOrderID = data["SalesOrderID"]
         detail.ProductID = data["ProductID"]
 
-        # Set SalesOrderDetailID - auto-generate if not provided
+        # Set SalesOrderDetailID only if explicitly provided (otherwise SQLite auto-assigns)
         if "SalesOrderDetailID" in data:
             detail.SalesOrderDetailID = data["SalesOrderDetailID"]
-        else:
-            # Auto-generate ID by finding the maximum existing ID and adding 1
-            max_id = session.query(func.max(SalesOrderDetail.SalesOrderDetailID)).scalar()
-            detail.SalesOrderDetailID = (max_id + 1) if max_id is not None else 1
 
         # Handle optional fields
         optional_fields = [
@@ -700,7 +696,7 @@ def create_sales_order_detail():
                 setattr(detail, field, data[field])
 
         session.add(detail)
-        session.flush()  # Flush to get the generated ID
+        session.flush()  # Flush to get the auto-generated ID
 
         # Build response
         detail_data = {
