@@ -6,6 +6,30 @@ This project is a technical case study demonstrating an AI-powered document extr
 
 The application was built to showcase problem-solving approach, strategic thinking, and technical abilities in handling document processing workflows similar to those used by Customer Intelligence teams.
 
+## Application Showcase
+
+The following screenshots demonstrate the user journey through the application:
+
+### Homepage
+The landing page introduces the case study and provides an overview of the application's capabilities.
+
+![Homepage](docs/homepage.png)
+
+### Sales Orders Dashboard
+The main dashboard displays all imported sales orders in an interactive table, allowing users to view, search, and manage orders.
+
+![Sales Orders Dashboard](docs/sales_order_dashboard.png)
+
+### Review Sales Orders After Importing
+After uploading an invoice, users can review and edit the extracted data before saving it to the database. This interface shows the extracted header information and line items.
+
+![Review Sales Orders After Importing](docs/review_sales_orders_after_importing.png)
+
+### View Sales Order Details
+The detailed view provides comprehensive information about a specific sales order, including all line items, customer information, and order metadata.
+
+![View Sales Order Details](docs/view_sales_order_details.png)
+
 ## Case Study Context
 
 This case study was designed to better understand approach to problem solving, strategic thinking, and highlight technical abilities. The application processes sales invoices and extracts structured data that mimics the structure found in `SalesOrderDetail` and `SalesOrderHeader` tables, demonstrating:

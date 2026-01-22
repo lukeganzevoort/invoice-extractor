@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { FileText, Upload, Database, Zap, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -104,6 +105,86 @@ export default function Home() {
                   Scalable architecture for production deployment
                 </li>
               </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Screenshot Gallery */}
+        <div className="mb-16">
+          <h3 className="mb-6 text-2xl font-semibold text-center bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+            Application Screenshots
+          </h3>
+          <p className="mb-8 text-center text-zinc-600 dark:text-zinc-400">
+            Explore the user journey through the application
+          </p>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="rounded-xl bg-white p-4 shadow-sm border border-primary/20 dark:bg-zinc-900 dark:border-primary/20 overflow-hidden">
+              <div className="relative w-full aspect-video mb-3 rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                <Image
+                  src="/docs/homepage.png"
+                  alt="Homepage - Landing page introducing the case study"
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+              </div>
+              <h4 className="text-sm font-semibold text-black dark:text-zinc-50 mb-1">
+                Homepage
+              </h4>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                Landing page introducing the case study and application capabilities
+              </p>
+            </div>
+            <div className="rounded-xl bg-white p-4 shadow-sm border border-primary/20 dark:bg-zinc-900 dark:border-primary/20 overflow-hidden">
+              <div className="relative w-full aspect-video mb-3 rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                <Image
+                  src="/docs/sales_order_dashboard.png"
+                  alt="Sales Orders Dashboard - Main dashboard with sales orders table"
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+              </div>
+              <h4 className="text-sm font-semibold text-black dark:text-zinc-50 mb-1">
+                Sales Orders Dashboard
+              </h4>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                Interactive table displaying all imported sales orders
+              </p>
+            </div>
+            <div className="rounded-xl bg-white p-4 shadow-sm border border-primary/20 dark:bg-zinc-900 dark:border-primary/20 overflow-hidden">
+              <div className="relative w-full aspect-video mb-3 rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                <Image
+                  src="/docs/review_sales_orders_after_importing.png"
+                  alt="Review Sales Orders - Data review interface after extraction"
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+              </div>
+              <h4 className="text-sm font-semibold text-black dark:text-zinc-50 mb-1">
+                Review & Edit
+              </h4>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                Review and edit extracted invoice data before saving
+              </p>
+            </div>
+            <div className="rounded-xl bg-white p-4 shadow-sm border border-primary/20 dark:bg-zinc-900 dark:border-primary/20 overflow-hidden">
+              <div className="relative w-full aspect-video mb-3 rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                <Image
+                  src="/docs/view_sales_order_details.png"
+                  alt="View Sales Order Details - Detailed view of sales order information"
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+              </div>
+              <h4 className="text-sm font-semibold text-black dark:text-zinc-50 mb-1">
+                Order Details
+              </h4>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                Comprehensive view of sales order with line items and metadata
+              </p>
             </div>
           </div>
         </div>
