@@ -947,19 +947,34 @@ def search_customers():
         # Search individual customers by name
         name_parts = query.split()
         if len(name_parts) >= 1:
-            search_term = f"%{query}%"
-            # Search by first name, last name, or both
-            individuals = (
-                session.query(IndividualCustomer)
-                .filter(
-                    or_(
-                        IndividualCustomer.FirstName.ilike(search_term),
-                        IndividualCustomer.LastName.ilike(search_term),
+            # If query has multiple words, search for first name + last name combination
+            if len(name_parts) >= 2:
+                first_name = name_parts[0]
+                last_name = " ".join(name_parts[1:])
+                # Search for customers where first name matches first word AND last name matches remaining words
+                individuals = (
+                    session.query(IndividualCustomer)
+                    .filter(
+                        IndividualCustomer.FirstName.ilike(f"%{first_name}%"),
+                        IndividualCustomer.LastName.ilike(f"%{last_name}%"),
                     )
+                    .limit(limit)
+                    .all()
                 )
-                .limit(limit)
-                .all()
-            )
+            else:
+                # Single word search - search in either first name or last name
+                search_term = f"%{query}%"
+                individuals = (
+                    session.query(IndividualCustomer)
+                    .filter(
+                        or_(
+                            IndividualCustomer.FirstName.ilike(search_term),
+                            IndividualCustomer.LastName.ilike(search_term),
+                        )
+                    )
+                    .limit(limit)
+                    .all()
+                )
 
             for individual in individuals:
                 customer = (
