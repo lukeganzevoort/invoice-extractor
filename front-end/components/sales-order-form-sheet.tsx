@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Loader2, Search } from "lucide-react"
+import { Loader2, Search, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -150,6 +150,59 @@ export function SalesOrderFormSheet({
       ...formData,
       lineItems: updatedItems,
     })
+  }
+
+  const addLineItem = () => {
+    if (!formData) return
+    const newItem: ExtractedLineItem = {
+      OrderQty: null,
+      ProductID: null,
+      ProductDescription: null,
+      SpecialOfferID: null,
+      UnitPrice: null,
+      UnitPriceDiscount: null,
+      LineTotal: null,
+      CarrierTrackingNumber: null,
+      product: null,
+    }
+    onFormDataChange({
+      ...formData,
+      lineItems: [...formData.lineItems, newItem],
+    })
+  }
+
+  // Helper function to reindex a Map after removing an item
+  const reindexMap = <T,>(map: Map<number, T>, removedIndex: number): Map<number, T> => {
+    const reindexed = new Map<number, T>()
+    map.forEach((value, key) => {
+      if (key < removedIndex) {
+        reindexed.set(key, value)
+      } else if (key > removedIndex) {
+        reindexed.set(key - 1, value)
+      }
+      // Skip the removed index
+    })
+    return reindexed
+  }
+
+  const removeLineItem = (index: number) => {
+    if (!formData) return
+    const updatedItems = formData.lineItems.filter((_, i) => i !== index)
+    onFormDataChange({
+      ...formData,
+      lineItems: updatedItems,
+    })
+    // Clean up and reindex search state
+    setProductSearchQueries((prev) => reindexMap(prev, index))
+    setProductSearchResults((prev) => reindexMap(prev, index))
+    setProductSearchLoading((prev) => reindexMap(prev, index))
+    setShowProductDropdowns((prev) => reindexMap(prev, index))
+    // Clean up timeout refs
+    const timeout = productSearchTimeoutRefs.current.get(index)
+    if (timeout) {
+      clearTimeout(timeout)
+    }
+    productSearchTimeoutRefs.current = reindexMap(productSearchTimeoutRefs.current, index)
   }
 
   const searchCustomers = async (query: string) => {
@@ -549,10 +602,34 @@ export function SalesOrderFormSheet({
 
           {/* Line Items */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Line Items</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Line Items</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addLineItem}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Item
+              </Button>
+            </div>
             {formData.lineItems.map((item, index) => (
               <div key={index} className="border rounded-lg p-4 space-y-3">
-                <h4 className="font-medium">Item {index + 1}</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">Item {index + 1}</h4>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeLineItem(index)}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    disabled={formData.lineItems.length === 1}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
 
                 {/* Product Selection */}
                 <div className="space-y-2 product-search-container">
