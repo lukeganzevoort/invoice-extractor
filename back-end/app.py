@@ -891,18 +891,19 @@ def search_customers():
             if customer:
                 # Get customer detail
                 customer_detail = None
-                if customer.PersonID:
+
+                if customer.StoreID:
+                    customer_detail = (
+                        session.query(StoreCustomer)
+                        .filter(StoreCustomer.BusinessEntityID == customer.StoreID)
+                        .first()
+                    )
+                elif customer.PersonID:
                     customer_detail = (
                         session.query(IndividualCustomer)
                         .filter(
                             IndividualCustomer.BusinessEntityID == customer.PersonID
                         )
-                        .first()
-                    )
-                elif customer.StoreID:
-                    customer_detail = (
-                        session.query(StoreCustomer)
-                        .filter(StoreCustomer.BusinessEntityID == customer.StoreID)
                         .first()
                     )
 
