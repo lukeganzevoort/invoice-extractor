@@ -86,11 +86,11 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
     const fetchSalesOrders = async () => {
       try {
         setLoading(true)
-        // Fetch page 1 with 10 entries, ordered by OrderDate in descending order
+        // Fetch page 1 with 10 entries, ordered by SalesOrderID in ascending order
         const params = new URLSearchParams({
           page: "1",
           per_page: "10",
-          sort_by: "OrderDate",
+          sort_by: "SalesOrderID",
           order: "desc",
         })
         const response = await fetch(
@@ -125,8 +125,8 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
         const params = new URLSearchParams({
           page: nextPage.toString(),
           per_page: "10",
-          sort_by: "OrderDate",
-          order: "desc",
+          sort_by: "SalesOrderID",
+          order: "asc",
         })
         const response = await fetch(
           `http://localhost:5000/sales_orders?${params.toString()}`
@@ -225,9 +225,9 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12"></TableHead>
-                <TableHead>Order ID</TableHead>
+                <TableHead>Order ID ↓</TableHead>
                 <TableHead>Order Number</TableHead>
-                <TableHead>Order Date ↓</TableHead>
+                <TableHead>Order Date</TableHead>
                 <TableHead>Due Date</TableHead>
                 <TableHead>Customer ID</TableHead>
                 <TableHead>Status</TableHead>
