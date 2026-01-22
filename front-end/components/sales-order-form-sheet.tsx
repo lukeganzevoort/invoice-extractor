@@ -54,6 +54,21 @@ export function SalesOrderFormSheet({
   const [productSearchLoading, setProductSearchLoading] = useState<Map<number, boolean>>(new Map())
   const [showProductDropdowns, setShowProductDropdowns] = useState<Map<number, boolean>>(new Map())
   const productSearchTimeoutRefs = useRef<Map<number, NodeJS.Timeout>>(new Map())
+  const [validationMessage, setValidationMessage] = useState<string | null>(null)
+
+  // Clear validation message when all requirements are met
+  useEffect(() => {
+    if (!formData || !validationMessage) return
+
+    const hasCustomer = !!formData.customer
+    const allItemsHaveProducts = formData.lineItems.every(
+      (item) => item.product || item.ProductID
+    )
+
+    if (hasCustomer && allItemsHaveProducts) {
+      setValidationMessage(null)
+    }
+  }, [formData?.customer, formData?.lineItems, validationMessage])
 
   // Initialize customer search query when formData changes
   useEffect(() => {
@@ -261,6 +276,8 @@ export function SalesOrderFormSheet({
     setCustomerSearchQuery("")
     setShowCustomerDropdown(false)
     setCustomerSearchResults([])
+    // Clear validation message when customer is selected
+    setValidationMessage(null)
   }
 
   const getCustomerDisplayName = (customer: CustomerWithDetail) => {
@@ -384,6 +401,30 @@ export function SalesOrderFormSheet({
     e.preventDefault()
     if (!formData) return
 
+    // Validate that a customer is selected
+    if (!formData.customer) {
+      setValidationMessage("Please select a customer before submitting")
+      return
+    }
+
+    // Validate that all line items have products selected
+    const itemsWithoutProducts: number[] = []
+    formData.lineItems.forEach((item, index) => {
+      if (!item.product && !item.ProductID) {
+        itemsWithoutProducts.push(index + 1)
+      }
+    })
+    if (itemsWithoutProducts.length > 0) {
+      const itemNumbers = itemsWithoutProducts.join(", ")
+      setValidationMessage(
+        `Please select a product for item${itemsWithoutProducts.length > 1 ? "s" : ""} ${itemNumbers}`
+      )
+      return
+    }
+
+    // Clear validation message if all validations pass
+    setValidationMessage(null)
+
     try {
       if (onError) {
         onError(null)
@@ -422,7 +463,6 @@ export function SalesOrderFormSheet({
                 <input
                   type="text"
                   placeholder="Search by customer name or ID..."
-                  required
                   value={customerSearchQuery}
                   onChange={(e) => handleCustomerSearchChange(e.target.value)}
                   onFocus={() => {
@@ -455,6 +495,9 @@ export function SalesOrderFormSheet({
                 </div>
               )}
             </div>
+            {!formData.customer && (
+              <p className="text-sm text-muted-foreground italic">Please search and select a customer</p>
+            )}
             {formData.customer && formData.customerDetail && (
               <div className="border rounded-lg p-4 bg-muted/50">
                 <div className="space-y-2">
@@ -763,6 +806,13 @@ export function SalesOrderFormSheet({
             ))}
           </div>
 
+          {/* Validation Message */}
+          {validationMessage && (
+            <div className="rounded-md bg-blue-50 border border-blue-200 p-3 text-sm text-blue-800">
+              {validationMessage}
+            </div>
+          )}
+
           <SheetFooter>
             <Button
               type="button"
@@ -771,7 +821,11 @@ export function SalesOrderFormSheet({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting}>
+            <Button
+              type="submit"
+              disabled={submitting || !!validationMessage}
+              variant={validationMessage ? "destructive" : "default"}
+            >
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
