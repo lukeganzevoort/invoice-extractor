@@ -12,59 +12,11 @@ import {
 import { ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { API_ENDPOINTS } from "@/lib/api"
-
-interface SalesOrderHeader {
-  SalesOrderID: number
-  RevisionNumber: number | null
-  OrderDate: string | null
-  DueDate: string | null
-  ShipDate: string | null
-  Status: number | null
-  OnlineOrderFlag: boolean | null
-  SalesOrderNumber: string | null
-  PurchaseOrderNumber: string | null
-  AccountNumber: string | null
-  CustomerID: number
-  SalesPersonID: number | null
-  TerritoryID: number
-  BillToAddressID: number | null
-  ShipToAddressID: number | null
-  ShipMethodID: number | null
-  CreditCardID: number | null
-  CreditCardApprovalCode: string | null
-  CurrencyRateID: number | null
-  SubTotal: number | null
-  TaxAmt: number | null
-  Freight: number | null
-  TotalDue: number | null
-}
-
-interface Product {
-  ProductID: number
-  Name: string | null
-  ProductNumber: string | null
-  Color: string | null
-  Size: string | null
-  StandardCost: number | null
-  ListPrice: number | null
-  ProductSubcategoryID: number | null
-}
-
-interface SalesOrderDetail {
-  SalesOrderDetailID: number
-  CarrierTrackingNumber: string | null
-  OrderQty: number | null
-  ProductID: number
-  SpecialOfferID: number | null
-  UnitPrice: number | null
-  UnitPriceDiscount: number | null
-  LineTotal: number | null
-  Product: Product | null
-}
-
-interface SalesOrderWithDetails extends SalesOrderHeader {
-  OrderDetails: SalesOrderDetail[]
-}
+import type {
+  SalesOrderHeader,
+  SalesOrderDetail,
+  SalesOrderWithDetails,
+} from "@/lib/types"
 
 export interface SalesOrderTableRef {
   refresh: () => Promise<void>

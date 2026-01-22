@@ -12,99 +12,23 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { API_ENDPOINTS } from "@/lib/api"
-
-interface ExtractedHeader {
-  SalesOrderNumber: string | null
-  OrderDate: string | null
-  DueDate: string | null
-  ShipDate: string | null
-  Status: number | null
-  OnlineOrderFlag: boolean | null
-  PurchaseOrderNumber: string | null
-  AccountNumber: string | null
-  SalesPersonID: number | null
-  BillToAddressID: number | null
-  ShipToAddressID: number | null
-  ShipMethodID: number | null
-  CreditCardID: number | null
-  CreditCardApprovalCode: string | null
-  CurrencyRateID: number | null
-  SubTotal: number | null
-  TaxAmt: number | null
-  Freight: number | null
-  TotalDue: number | null
-}
-
-interface Product {
-  ProductID: number
-  Name: string | null
-  ProductNumber: string | null
-  Color: string | null
-  Size: string | null
-  StandardCost: number | null
-  ListPrice: number | null
-  ProductSubcategoryID: number | null
-}
-
-interface ExtractedLineItem {
-  OrderQty: number | null
-  ProductID: number | null
-  ProductDescription: string | null
-  SpecialOfferID: number | null
-  UnitPrice: number | null
-  UnitPriceDiscount: number | null
-  LineTotal: number | null
-  CarrierTrackingNumber: string | null
-  product: Product | null
-}
-
-interface Customer {
-  CustomerID: number
-  PersonID: number | null
-  StoreID: number | null
-  TerritoryID: number
-  AccountNumber: string | null
-}
-
-interface IndividualCustomer {
-  BusinessEntityID: number
-  FirstName: string | null
-  MiddleName: string | null
-  LastName: string | null
-  AddressType: string | null
-  AddressLine1: string | null
-  AddressLine2: string | null
-  City: string | null
-  StateProvinceName: string | null
-  PostalCode: string | null
-  CountryRegionName: string | null
-}
-
-interface StoreCustomer {
-  BusinessEntityID: number
-  Name: string | null
-  AddressType: string | null
-  AddressLine1: string | null
-  AddressLine2: string | null
-  City: string | null
-  StateProvinceName: string | null
-  PostalCode: string | null
-  CountryRegionName: string | null
-}
-
-interface FormData {
-  header: ExtractedHeader
-  lineItems: ExtractedLineItem[]
-  customer: Customer | null
-  customerDetail: IndividualCustomer | StoreCustomer | null
-}
+import type {
+  ExtractedHeader,
+  ExtractedLineItem,
+  Product,
+  Customer,
+  IndividualCustomer,
+  StoreCustomer,
+  SalesOrderFormData,
+  CustomerWithDetail,
+} from "@/lib/types"
 
 interface SalesOrderFormSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  formData: FormData | null
-  onFormDataChange: (data: FormData) => void
-  onSubmit: (data: FormData) => Promise<void>
+  formData: SalesOrderFormData | null
+  onFormDataChange: (data: SalesOrderFormData) => void
+  onSubmit: (data: SalesOrderFormData) => Promise<void>
   submitting?: boolean
   error?: string | null
   onError?: (error: string | null) => void
@@ -121,9 +45,7 @@ export function SalesOrderFormSheet({
   onError,
 }: SalesOrderFormSheetProps) {
   const [customerSearchQuery, setCustomerSearchQuery] = useState("")
-  const [customerSearchResults, setCustomerSearchResults] = useState<
-    (Customer & { customer_detail: IndividualCustomer | StoreCustomer })[]
-  >([])
+  const [customerSearchResults, setCustomerSearchResults] = useState<CustomerWithDetail[]>([])
   const [customerSearchLoading, setCustomerSearchLoading] = useState(false)
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const customerSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -270,7 +192,7 @@ export function SalesOrderFormSheet({
     }, 300)
   }
 
-  const selectCustomer = (customer: Customer & { customer_detail: IndividualCustomer | StoreCustomer }) => {
+  const selectCustomer = (customer: CustomerWithDetail) => {
     if (!formData) return
     onFormDataChange({
       ...formData,
@@ -288,7 +210,7 @@ export function SalesOrderFormSheet({
     setCustomerSearchResults([])
   }
 
-  const getCustomerDisplayName = (customer: Customer & { customer_detail: IndividualCustomer | StoreCustomer }) => {
+  const getCustomerDisplayName = (customer: CustomerWithDetail) => {
     if ("FirstName" in customer.customer_detail) {
       return [
         customer.customer_detail.FirstName,

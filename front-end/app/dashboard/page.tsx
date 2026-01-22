@@ -7,131 +7,17 @@ import { Button } from "@/components/ui/button"
 import { SalesOrderFormSheet } from "@/components/sales-order-form-sheet"
 import { SalesOrderTable, SalesOrderTableRef } from "@/components/sales-order-table"
 import { API_ENDPOINTS } from "@/lib/api"
-
-
-interface ExtractedHeader {
-  SalesOrderNumber: string | null
-  OrderDate: string | null
-  DueDate: string | null
-  ShipDate: string | null
-  Status: number | null
-  OnlineOrderFlag: boolean | null
-  PurchaseOrderNumber: string | null
-  AccountNumber: string | null
-  SalesPersonID: number | null
-  BillToAddressID: number | null
-  ShipToAddressID: number | null
-  ShipMethodID: number | null
-  CreditCardID: number | null
-  CreditCardApprovalCode: string | null
-  CurrencyRateID: number | null
-  SubTotal: number | null
-  TaxAmt: number | null
-  Freight: number | null
-  TotalDue: number | null
-}
-
-interface Product {
-  ProductID: number
-  Name: string | null
-  ProductNumber: string | null
-  Color: string | null
-  Size: string | null
-  StandardCost: number | null
-  ListPrice: number | null
-  ProductSubcategoryID: number | null
-}
-
-interface ExtractedLineItem {
-  OrderQty: number | null
-  ProductID: number | null
-  ProductDescription: string | null
-  SpecialOfferID: number | null
-  UnitPrice: number | null
-  UnitPriceDiscount: number | null
-  LineTotal: number | null
-  CarrierTrackingNumber: string | null
-  product: Product | null
-}
-
-interface SalesOrderHeader {
-  SalesOrderID: number
-  RevisionNumber: number | null
-  OrderDate: string | null
-  DueDate: string | null
-  ShipDate: string | null
-  Status: number | null
-  OnlineOrderFlag: boolean | null
-  SalesOrderNumber: string | null
-  PurchaseOrderNumber: string | null
-  AccountNumber: string | null
-  CustomerID: number
-  SalesPersonID: number | null
-  TerritoryID: number
-  BillToAddressID: number | null
-  ShipToAddressID: number | null
-  ShipMethodID: number | null
-  CreditCardID: number | null
-  CreditCardApprovalCode: string | null
-  CurrencyRateID: number | null
-  SubTotal: number | null
-  TaxAmt: number | null
-  Freight: number | null
-  TotalDue: number | null
-}
-
-interface Customer {
-  CustomerID: number
-  PersonID: number | null
-  StoreID: number | null
-  TerritoryID: number
-  AccountNumber: string | null
-}
-
-interface IndividualCustomer {
-  BusinessEntityID: number
-  FirstName: string | null
-  MiddleName: string | null
-  LastName: string | null
-  AddressType: string | null
-  AddressLine1: string | null
-  AddressLine2: string | null
-  City: string | null
-  StateProvinceName: string | null
-  PostalCode: string | null
-  CountryRegionName: string | null
-}
-
-interface StoreCustomer {
-  BusinessEntityID: number
-  Name: string | null
-  AddressType: string | null
-  AddressLine1: string | null
-  AddressLine2: string | null
-  City: string | null
-  StateProvinceName: string | null
-  PostalCode: string | null
-  CountryRegionName: string | null
-}
-
-interface ExtractedData {
-  header: ExtractedHeader
-  line_items: ExtractedLineItem[]
-  extracted_customer_name: string | null
-  customer: Customer | null
-  customer_detail: IndividualCustomer | StoreCustomer | null
-}
+import type {
+  SalesOrderHeader,
+  ExtractedData,
+  SalesOrderFormData,
+} from "@/lib/types"
 
 export default function Dashboard() {
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [formData, setFormData] = useState<{
-    header: ExtractedHeader
-    lineItems: ExtractedLineItem[]
-    customer: Customer | null
-    customerDetail: IndividualCustomer | StoreCustomer | null
-  } | null>(null)
+  const [formData, setFormData] = useState<SalesOrderFormData | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const tableRef = useRef<SalesOrderTableRef>(null)
@@ -189,12 +75,7 @@ export default function Dashboard() {
     }
   }
 
-  const handleFormSubmit = async (data: {
-    header: ExtractedHeader
-    lineItems: ExtractedLineItem[]
-    customer: Customer | null
-    customerDetail: IndividualCustomer | StoreCustomer | null
-  }) => {
+  const handleFormSubmit = async (data: SalesOrderFormData) => {
     if (!data.customer) {
       setError("Customer information is required")
       return
