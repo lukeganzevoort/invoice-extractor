@@ -32,6 +32,7 @@ interface SalesOrderFormSheetProps {
   submitting?: boolean
   error?: string | null
   onError?: (error: string | null) => void
+  salesOrderId?: number | null // If provided, we're in edit mode
 }
 
 export function SalesOrderFormSheet({
@@ -43,6 +44,7 @@ export function SalesOrderFormSheet({
   submitting = false,
   error,
   onError,
+  salesOrderId = null,
 }: SalesOrderFormSheetProps) {
   const [customerSearchQuery, setCustomerSearchQuery] = useState("")
   const [customerSearchResults, setCustomerSearchResults] = useState<CustomerWithDetail[]>([])
@@ -447,9 +449,11 @@ export function SalesOrderFormSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="overflow-y-auto sm:max-w-2xl">
         <SheetHeader>
-          <SheetTitle>Review and Edit Sales Order</SheetTitle>
+          <SheetTitle>{salesOrderId ? "Edit Sales Order" : "Review and Edit Sales Order"}</SheetTitle>
           <SheetDescription>
-            Review the extracted data and make any necessary edits before submitting.
+            {salesOrderId
+              ? "Edit the sales order details and make any necessary changes."
+              : "Review the extracted data and make any necessary edits before submitting."}
           </SheetDescription>
         </SheetHeader>
 
@@ -818,6 +822,7 @@ export function SalesOrderFormSheet({
               type="button"
               variant="outline"
               disabled={submitting}
+              onClick={() => onOpenChange(false)}
             >
               Cancel
             </Button>
@@ -829,10 +834,10 @@ export function SalesOrderFormSheet({
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
+                  {salesOrderId ? "Updating..." : "Submitting..."}
                 </>
               ) : (
-                "Submit"
+                salesOrderId ? "Update" : "Submit"
               )}
             </Button>
           </SheetFooter>

@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { API_ENDPOINTS } from "@/lib/api"
 import type {
@@ -21,14 +21,16 @@ import type {
 
 export interface SalesOrderTableRef {
   refresh: () => Promise<void>
+  invalidateOrderDetails: (orderId: number) => void
 }
 
 interface SalesOrderTableProps {
   onError?: (error: string | null) => void
+  onEdit?: (orderId: number) => void
 }
 
 export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTableProps>(
-  ({ onError }, ref) => {
+  ({ onError, onEdit }, ref) => {
     const [salesOrders, setSalesOrders] = useState<SalesOrderHeader[]>([])
     const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set())
     const [orderDetails, setOrderDetails] = useState<Map<number, SalesOrderDetail[]>>(new Map())
@@ -106,9 +108,9 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
       }
     }
 
-    const fetchOrderDetails = async (orderId: number) => {
-      // If details are already loaded, don't fetch again
-      if (orderDetails.has(orderId)) {
+    const fetchOrderDetails = async (orderId: number, forceRefresh = false) => {
+      // If details are already loaded and not forcing refresh, don't fetch again
+      if (!forceRefresh && orderDetails.has(orderId)) {
         return
       }
 
@@ -128,9 +130,34 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
       }
     }
 
-    const fetchCustomerInfo = async (customerId: number) => {
-      // If customer info is already loaded, don't fetch again
-      if (customerInfo.has(customerId)) {
+    const invalidateOrderDetails = (orderId: number) => {
+      // Remove cached order details for this order
+      setOrderDetails((prev) => {
+        const newMap = new Map(prev)
+        newMap.delete(orderId)
+        return newMap
+      })
+      
+      // If the order is currently expanded, re-fetch the details and customer info
+      if (expandedOrders.has(orderId)) {
+        const order = salesOrders.find((o) => o.SalesOrderID === orderId)
+        if (order) {
+          // Remove cached customer info and re-fetch
+          setCustomerInfo((prev) => {
+            const newMap = new Map(prev)
+            newMap.delete(order.CustomerID)
+            return newMap
+          })
+          // Re-fetch the order details and customer info with force refresh
+          fetchOrderDetails(orderId, true)
+          fetchCustomerInfo(order.CustomerID, true)
+        }
+      }
+    }
+
+    const fetchCustomerInfo = async (customerId: number, forceRefresh = false) => {
+      // If customer info is already loaded and not forcing refresh, don't fetch again
+      if (!forceRefresh && customerInfo.has(customerId)) {
         return
       }
 
@@ -184,9 +211,10 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
       }).format(amount)
     }
 
-    // Expose refresh function to parent via ref
+    // Expose refresh and invalidate functions to parent via ref
     useImperativeHandle(ref, () => ({
       refresh: fetchSalesOrders,
+      invalidateOrderDetails,
     }))
 
     useEffect(() => {
@@ -327,7 +355,20 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
 
                               {/* Order Details */}
                               <div>
-                                <h3 className="font-semibold mb-4 text-foreground">Order Details</h3>
+                                <div className="flex items-center justify-between mb-4">
+                                  <h3 className="font-semibold text-foreground">Order Details</h3>
+                                  {onEdit && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => onEdit(order.SalesOrderID)}
+                                      className="flex items-center gap-2"
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                      Edit Order
+                                    </Button>
+                                  )}
+                                </div>
                                 {details.length === 0 ? (
                                   <p className="text-muted-foreground">Loading order details...</p>
                                 ) : (

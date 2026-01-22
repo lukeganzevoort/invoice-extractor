@@ -59,6 +59,7 @@ export interface ExtractedLineItem {
   LineTotal: number | null
   CarrierTrackingNumber: string | null
   product: Product | null
+  SalesOrderDetailID?: number | null // Optional: used when editing existing orders
 }
 
 // ============================================================================
