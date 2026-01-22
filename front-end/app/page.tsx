@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50 font-sans dark:bg-black">
+    <div className="flex min-h-screen flex-col bg-gradient-to-br from-primary/10 via-background to-primary/8 font-sans dark:bg-black">
       {/* Header */}
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-black">
+      <header className="border-b border-primary/20 bg-white/80 backdrop-blur-sm dark:border-zinc-800 dark:bg-black">
         <div className="mx-auto max-w-7xl px-6 py-4">
-          <h1 className="text-xl font-semibold text-black dark:text-zinc-50">
+          <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
             Document Extraction Case Study
           </h1>
         </div>
@@ -18,11 +18,11 @@ export default function Home() {
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-16">
         {/* Introduction Section */}
         <div className="mb-16 text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary dark:bg-primary/20 dark:text-primary-foreground">
             <FileText className="h-4 w-4" />
             Case Study
           </div>
-          <h2 className="mb-4 text-4xl font-bold tracking-tight text-black dark:text-zinc-50 sm:text-5xl">
+          <h2 className="mb-4 text-4xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent sm:text-5xl">
             AI-Powered Document Extraction Application
           </h2>
           <p className="mx-auto max-w-2xl text-lg leading-8 text-zinc-600 dark:text-zinc-400">
@@ -31,7 +31,7 @@ export default function Home() {
           </p>
           <div className="mt-6">
             <Link href="/dashboard">
-              <Button size="lg" >
+              <Button size="lg">
                 Go to Dashboard
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -40,8 +40,8 @@ export default function Home() {
         </div>
 
         {/* Case Study Overview */}
-        <div className="mb-16 rounded-2xl bg-white p-8 shadow-sm dark:bg-zinc-900">
-          <h3 className="mb-6 text-2xl font-semibold text-black dark:text-zinc-50">
+        <div className="mb-16 rounded-2xl bg-white p-8 shadow-sm border border-primary/20 dark:bg-zinc-900 dark:border-primary/20">
+          <h3 className="mb-6 text-2xl font-semibold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
             Case Study Overview
           </h3>
           <p className="mb-6 text-zinc-600 dark:text-zinc-400">
@@ -57,23 +57,23 @@ export default function Home() {
               </h4>
               <ul className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
                 <li className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-zinc-400"></span>
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary"></span>
                   React/Next.js frontend with Flask backend
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-zinc-400"></span>
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary"></span>
                   Document upload and LLM-based extraction
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-zinc-400"></span>
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary"></span>
                   Support for multiple invoice templates
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-zinc-400"></span>
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary"></span>
                   Structured data display and editing
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-zinc-400"></span>
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary"></span>
                   Real-time processing and database persistence
                 </li>
               </ul>
@@ -84,23 +84,23 @@ export default function Home() {
               </h4>
               <ul className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
                 <li className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-zinc-400"></span>
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary"></span>
                   Intelligent invoice parsing using LLM APIs
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-zinc-400"></span>
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary"></span>
                   Clean, user-friendly interface for data review
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-zinc-400"></span>
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary"></span>
                   Inline editing of extracted metadata
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-zinc-400"></span>
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary"></span>
                   Database storage with SQLAlchemy ORM
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-zinc-400"></span>
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary"></span>
                   Scalable architecture for production deployment
                 </li>
               </ul>
@@ -110,9 +110,9 @@ export default function Home() {
 
         {/* Features Grid */}
         <div className="mb-16 grid gap-6 md:grid-cols-3">
-          <div className="rounded-xl bg-white p-6 shadow-sm dark:bg-zinc-900">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-              <Upload className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          <div className="rounded-xl bg-white p-6 shadow-sm border border-primary/20 dark:bg-zinc-900 dark:border-primary/20">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 dark:bg-primary/20">
+              <Upload className="h-6 w-6 text-primary" />
             </div>
             <h3 className="mb-2 text-lg font-semibold text-black dark:text-zinc-50">
               Document Upload
@@ -122,9 +122,9 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="rounded-xl bg-white p-6 shadow-sm dark:bg-zinc-900">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
-              <Zap className="h-6 w-6 text-green-600 dark:text-green-400" />
+          <div className="rounded-xl bg-white p-6 shadow-sm border border-primary/20 dark:bg-zinc-900 dark:border-primary/20">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 dark:bg-primary/20">
+              <Zap className="h-6 w-6 text-primary" />
             </div>
             <h3 className="mb-2 text-lg font-semibold text-black dark:text-zinc-50">
               Real-time Processing
@@ -134,9 +134,9 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="rounded-xl bg-white p-6 shadow-sm dark:bg-zinc-900">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30">
-              <Database className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+          <div className="rounded-xl bg-white p-6 shadow-sm border border-primary/20 dark:bg-zinc-900 dark:border-primary/20">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 dark:bg-primary/20">
+              <Database className="h-6 w-6 text-primary" />
             </div>
             <h3 className="mb-2 text-lg font-semibold text-black dark:text-zinc-50">
               Data Management
@@ -148,15 +148,15 @@ export default function Home() {
         </div>
 
         {/* CTA Section */}
-        <div className="rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-800 p-12 text-center dark:from-zinc-800 dark:to-zinc-900">
-          <h3 className="mb-4 text-3xl font-bold text-white">
+        <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-12 text-center shadow-lg">
+          <h3 className="mb-4 text-3xl font-bold text-primary-foreground">
             Ready to explore the application?
           </h3>
-          <p className="mb-8 text-zinc-300">
+          <p className="mb-8 text-primary-foreground/80">
             Navigate to the dashboard to upload invoices and see the extraction in action
           </p>
           <Link href="/dashboard">
-            <Button size="lg" className="bg-white text-zinc-900 hover:bg-zinc-100 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
+            <Button size="lg" variant="secondary" className="bg-background text-primary hover:bg-background/90 shadow-md">
               Go to Dashboard
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -165,7 +165,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-200 bg-white py-8 dark:border-zinc-800 dark:bg-black">
+      <footer className="border-t border-primary/20 bg-white/80 backdrop-blur-sm py-8 dark:border-zinc-800 dark:bg-black">
         <div className="mx-auto max-w-7xl px-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
           <p>Built as a technical case study demonstration</p>
         </div>

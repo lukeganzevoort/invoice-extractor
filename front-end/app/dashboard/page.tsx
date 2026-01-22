@@ -158,16 +158,16 @@ export default function Dashboard() {
 
   return (
     <>
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-primary/8">
         <div className="container mx-auto py-8 px-4">
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-3">
               <Link href="/">
-                <Button variant="ghost" size="icon" className="h-9 w-9">
+                <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-primary/10 dark:hover:bg-primary/20">
                   <Home className="h-5 w-5" />
                 </Button>
               </Link>
-              <h1 className="text-3xl font-bold text-foreground">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
                 Sales Orders Dashboard
               </h1>
             </div>
@@ -192,7 +192,7 @@ export default function Dashboard() {
               </Button>
             </div>
           </div>
-          <div className="bg-card rounded-lg shadow-sm border">
+          <div className="bg-card rounded-lg shadow-sm border border-primary/20 dark:border-primary/20">
             <SalesOrderTable ref={tableRef} onError={setError} />
           </div>
         </div>
