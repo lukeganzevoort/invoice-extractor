@@ -16,6 +16,7 @@ import type {
   SalesOrderHeader,
   SalesOrderDetail,
   SalesOrderWithDetails,
+  CustomerWithDetail,
 } from "@/lib/types"
 
 export interface SalesOrderTableRef {
@@ -31,6 +32,7 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
     const [salesOrders, setSalesOrders] = useState<SalesOrderHeader[]>([])
     const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set())
     const [orderDetails, setOrderDetails] = useState<Map<number, SalesOrderDetail[]>>(new Map())
+    const [customerInfo, setCustomerInfo] = useState<Map<number, CustomerWithDetail>>(new Map())
     const [loading, setLoading] = useState(true)
     const [currentPage, setCurrentPage] = useState(1)
     const [hasNextPage, setHasNextPage] = useState(false)
@@ -126,13 +128,41 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
       }
     }
 
+    const fetchCustomerInfo = async (customerId: number) => {
+      // If customer info is already loaded, don't fetch again
+      if (customerInfo.has(customerId)) {
+        return
+      }
+
+      try {
+        const response = await fetch(API_ENDPOINTS.CUSTOMERS_SEARCH(customerId.toString(), 1))
+        if (!response.ok) {
+          throw new Error("Failed to fetch customer information")
+        }
+        const results: CustomerWithDetail[] = await response.json()
+        if (results.length > 0) {
+          setCustomerInfo((prev) => {
+            const newMap = new Map(prev)
+            newMap.set(customerId, results[0])
+            return newMap
+          })
+        }
+      } catch (err) {
+        console.error("Error fetching customer information:", err)
+      }
+    }
+
     const toggleOrder = async (orderId: number) => {
       const newExpanded = new Set(expandedOrders)
       if (newExpanded.has(orderId)) {
         newExpanded.delete(orderId)
       } else {
         newExpanded.add(orderId)
-        await fetchOrderDetails(orderId)
+        const order = salesOrders.find((o) => o.SalesOrderID === orderId)
+        await Promise.all([
+          fetchOrderDetails(orderId),
+          order ? fetchCustomerInfo(order.CustomerID) : Promise.resolve(),
+        ])
       }
       setExpandedOrders(newExpanded)
     }
@@ -198,6 +228,7 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
                 salesOrders.map((order) => {
                   const isExpanded = expandedOrders.has(order.SalesOrderID)
                   const details = orderDetails.get(order.SalesOrderID) || []
+                  const customer = customerInfo.get(order.CustomerID)
 
                   return (
                     <Fragment key={order.SalesOrderID}>
@@ -228,72 +259,141 @@ export const SalesOrderTable = forwardRef<SalesOrderTableRef, SalesOrderTablePro
                       {isExpanded && (
                         <TableRow>
                           <TableCell colSpan={8} className="bg-muted/50 p-0">
-                            <div className="p-6">
-                              <h3 className="font-semibold mb-4">Order Details</h3>
-                              {details.length === 0 ? (
-                                <p className="text-muted-foreground">Loading order details...</p>
-                              ) : (
-                                <>
-                                  <div className="rounded-md border">
-                                    <Table>
-                                      <TableHeader>
-                                        <TableRow>
-                                          <TableHead>Product</TableHead>
-                                          <TableHead>Quantity</TableHead>
-                                          <TableHead>Unit Price</TableHead>
-                                          <TableHead>Discount</TableHead>
-                                          <TableHead className="text-right">Line Total</TableHead>
-                                        </TableRow>
-                                      </TableHeader>
-                                      <TableBody>
-                                        {details.map((detail) => (
-                                          <TableRow key={detail.SalesOrderDetailID}>
-                                            <TableCell>
-                                              {detail.Product?.Name ||
-                                                `Product ID: ${detail.ProductID}`}
-                                              {detail.Product?.ProductNumber && (
-                                                <span className="text-muted-foreground text-sm ml-2">
-                                                  ({detail.Product.ProductNumber})
-                                                </span>
-                                              )}
-                                            </TableCell>
-                                            <TableCell>{detail.OrderQty ?? "N/A"}</TableCell>
-                                            <TableCell>{formatCurrency(detail.UnitPrice)}</TableCell>
-                                            <TableCell>
-                                              {detail.UnitPriceDiscount
-                                                ? `${(detail.UnitPriceDiscount * 100).toFixed(2)}%`
-                                                : "N/A"}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                              {formatCurrency(detail.LineTotal)}
-                                            </TableCell>
+                            <div className="p-6 space-y-6">
+                              {/* Customer Information */}
+                              <div>
+                                <h3 className="font-semibold mb-4">Customer Information</h3>
+                                {customer ? (
+                                  <div className="border rounded-lg p-4 bg-background">
+                                    <div className="space-y-2">
+                                      {"FirstName" in customer.customer_detail ? (
+                                        // Individual Customer
+                                        <div>
+                                          <p className="text-sm font-medium">Name</p>
+                                          <p className="text-sm">
+                                            {[
+                                              customer.customer_detail.FirstName,
+                                              customer.customer_detail.MiddleName,
+                                              customer.customer_detail.LastName,
+                                            ]
+                                              .filter(Boolean)
+                                              .join(" ")}
+                                          </p>
+                                        </div>
+                                      ) : (
+                                        // Store Customer
+                                        <div>
+                                          <p className="text-sm font-medium">Store Name</p>
+                                          <p className="text-sm">{customer.customer_detail.Name || "N/A"}</p>
+                                        </div>
+                                      )}
+                                      {customer.customer_detail.AddressLine1 && (
+                                        <div>
+                                          <p className="text-sm font-medium">Address</p>
+                                          <p className="text-sm">
+                                            {[
+                                              customer.customer_detail.AddressLine1,
+                                              customer.customer_detail.AddressLine2,
+                                              customer.customer_detail.City,
+                                              customer.customer_detail.StateProvinceName,
+                                              customer.customer_detail.PostalCode,
+                                            ]
+                                              .filter(Boolean)
+                                              .join(", ")}
+                                          </p>
+                                        </div>
+                                      )}
+                                      <div className="grid grid-cols-2 gap-4 text-sm pt-2">
+                                        <div>
+                                          <p className="text-muted-foreground">Customer ID</p>
+                                          <p className="font-semibold">{customer.CustomerID}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-muted-foreground">Territory ID</p>
+                                          <p className="font-semibold">{customer.TerritoryID}</p>
+                                        </div>
+                                        {customer.AccountNumber && (
+                                          <div>
+                                            <p className="text-muted-foreground">Account Number</p>
+                                            <p className="font-semibold">{customer.AccountNumber}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="text-muted-foreground">Loading customer information...</p>
+                                )}
+                              </div>
+
+                              {/* Order Details */}
+                              <div>
+                                <h3 className="font-semibold mb-4">Order Details</h3>
+                                {details.length === 0 ? (
+                                  <p className="text-muted-foreground">Loading order details...</p>
+                                ) : (
+                                  <>
+                                    <div className="rounded-md border">
+                                      <Table>
+                                        <TableHeader>
+                                          <TableRow>
+                                            <TableHead>Product</TableHead>
+                                            <TableHead>Quantity</TableHead>
+                                            <TableHead>Unit Price</TableHead>
+                                            <TableHead>Discount</TableHead>
+                                            <TableHead className="text-right">Line Total</TableHead>
                                           </TableRow>
-                                        ))}
-                                      </TableBody>
-                                    </Table>
-                                  </div>
-                                  <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                      <p className="text-muted-foreground">Subtotal:</p>
-                                      <p className="font-semibold">{formatCurrency(order.SubTotal)}</p>
+                                        </TableHeader>
+                                        <TableBody>
+                                          {details.map((detail) => (
+                                            <TableRow key={detail.SalesOrderDetailID}>
+                                              <TableCell>
+                                                {detail.Product?.Name ||
+                                                  `Product ID: ${detail.ProductID}`}
+                                                {detail.Product?.ProductNumber && (
+                                                  <span className="text-muted-foreground text-sm ml-2">
+                                                    ({detail.Product.ProductNumber})
+                                                  </span>
+                                                )}
+                                              </TableCell>
+                                              <TableCell>{detail.OrderQty ?? "N/A"}</TableCell>
+                                              <TableCell>{formatCurrency(detail.UnitPrice)}</TableCell>
+                                              <TableCell>
+                                                {detail.UnitPriceDiscount
+                                                  ? `${(detail.UnitPriceDiscount * 100).toFixed(2)}%`
+                                                  : "N/A"}
+                                              </TableCell>
+                                              <TableCell className="text-right">
+                                                {formatCurrency(detail.LineTotal)}
+                                              </TableCell>
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
                                     </div>
-                                    <div>
-                                      <p className="text-muted-foreground">Tax Amount:</p>
-                                      <p className="font-semibold">{formatCurrency(order.TaxAmt)}</p>
+                                    <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                                      <div>
+                                        <p className="text-muted-foreground">Subtotal:</p>
+                                        <p className="font-semibold">{formatCurrency(order.SubTotal)}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Tax Amount:</p>
+                                        <p className="font-semibold">{formatCurrency(order.TaxAmt)}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Freight:</p>
+                                        <p className="font-semibold">{formatCurrency(order.Freight)}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Total Due:</p>
+                                        <p className="font-semibold text-lg">
+                                          {formatCurrency(order.TotalDue)}
+                                        </p>
+                                      </div>
                                     </div>
-                                    <div>
-                                      <p className="text-muted-foreground">Freight:</p>
-                                      <p className="font-semibold">{formatCurrency(order.Freight)}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-muted-foreground">Total Due:</p>
-                                      <p className="font-semibold text-lg">
-                                        {formatCurrency(order.TotalDue)}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </>
-                              )}
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </TableCell>
                         </TableRow>
