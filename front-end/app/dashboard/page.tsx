@@ -1,6 +1,7 @@
 "use client"
 
 import { Fragment, useEffect, useRef, useState } from "react"
+import Link from "next/link"
 import {
   Table,
   TableBody,
@@ -9,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ChevronDown, Loader2, Search } from "lucide-react"
+import { ChevronDown, Loader2, Search, Home } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -703,7 +704,14 @@ export default function Dashboard() {
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Sales Orders Dashboard</h1>
+        <div className="flex items-center gap-4">
+          <Link href="/">
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Home className="h-5 w-5" />
+            </Button>
+          </Link>
+          <h1 className="text-3xl font-bold">Sales Orders Dashboard</h1>
+        </div>
         <div className="relative">
           <input
             ref={fileInputRef}
