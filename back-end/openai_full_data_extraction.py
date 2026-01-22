@@ -556,50 +556,18 @@ def extract_invoice_data_from_document(file, filename: str) -> dict:
     Raises:
         ValueError: If file type is not supported or processing fails
     """
-    # file_ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    file_ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
-    # # Extract structured data based on file type
-    # if file_ext == "pdf":
-    #     extracted_data = extract_data_from_pdf_gpt(file)
-    # elif file_ext in {"png", "jpg", "jpeg"}:
-    #     file.seek(0)
-    #     extracted_data = extract_data_from_image_gpt(file)
-    # else:
-    #     raise ValueError(f"Unsupported file type: {file_ext}")
+    # Extract structured data based on file type
+    if file_ext == "pdf":
+        extracted_data = extract_data_from_pdf_gpt(file)
+    elif file_ext in {"png", "jpg", "jpeg"}:
+        file.seek(0)
+        extracted_data = extract_data_from_image_gpt(file)
+    else:
+        raise ValueError(f"Unsupported file type: {file_ext}")
 
-    extracted_data = {
-        "header": {
-            "SalesOrderNumber": "11223344",
-            "OrderDate": "2025-06-04",
-            "DueDate": None,
-            "PurchaseOrderNumber": None,
-            "AccountNumber": None,
-            "SubTotal": 1350.0,
-            "TaxAmt": 0.0,
-            "TotalDue": 1350.0,
-        },
-        "line_items": [
-            {
-                "OrderQty": 1,
-                "ProductID": None,
-                "ProductDescription": "Half-Finger Gloves, M",
-                "UnitPrice": 50.0,
-                "UnitPriceDiscount": None,
-                "LineTotal": 50.0,
-            },
-            {
-                "OrderQty": 2,
-                "ProductID": None,
-                "ProductDescription": "Classic Vest, S",
-                "UnitPrice": 600.0,
-                "UnitPriceDiscount": None,
-                "LineTotal": 1200.0,
-            },
-        ],
-        "extracted_customer_name": "Isabella Torres",
-    }
-
-    print(extracted_data)
+    print("extracted_data", extracted_data)
 
     # Match customer if customer name was extracted
     if "extracted_customer_name" in extracted_data:
